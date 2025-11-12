@@ -39,13 +39,14 @@ export function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-// Format date
-export function formatDate(date: Date): string {
+// Format date (handles both Date objects and strings from localStorage)
+export function formatDate(date: Date | string): string {
+  const dateObj = date instanceof Date ? date : new Date(date);
   return new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
-  }).format(date);
+  }).format(dateObj);
 }
 
 // Download a blob as a file
@@ -58,4 +59,27 @@ export function downloadBlob(blob: Blob, filename: string): void {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+// Truncate filename for display (keep last 20 chars with extension)
+export function truncateFilename(filename: string, maxLength: number = 20): string {
+  if (filename.length <= maxLength) {
+    return filename;
+  }
+
+  // Get extension
+  const lastDotIndex = filename.lastIndexOf('.');
+  const extension = lastDotIndex !== -1 ? filename.substring(lastDotIndex) : '';
+  const nameWithoutExt = lastDotIndex !== -1 ? filename.substring(0, lastDotIndex) : filename;
+
+  // Calculate how much of the name we can keep
+  const availableLength = maxLength - extension.length - 3; // -3 for "..."
+
+  if (availableLength <= 0) {
+    return '...' + extension;
+  }
+
+  // Take the last N characters of the filename (more useful for date-stamped files)
+  const truncatedName = nameWithoutExt.substring(nameWithoutExt.length - availableLength);
+  return '...' + truncatedName + extension;
 }

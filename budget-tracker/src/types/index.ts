@@ -8,6 +8,7 @@ export interface Transaction {
   categoryId?: string;
   isExcluded: boolean;
   source: 'QFX' | 'CSV';
+  sourceFile?: string; // Truncated filename for display
   accountId?: string;
   transactionId?: string; // Original FITID
   memo?: string;
@@ -120,5 +121,6 @@ export interface AppContextValue {
     importPreferences: (file: File) => Promise<void>;
     exportData: () => void;
     clearAllData: () => void;
+    loadSampleData: () => Promise<void>;
   };
 }

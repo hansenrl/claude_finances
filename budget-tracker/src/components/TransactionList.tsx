@@ -21,7 +21,9 @@ export function TransactionList() {
 
       switch (sortField) {
         case 'date':
-          comparison = a.date.getTime() - b.date.getTime();
+          const dateA = a.date instanceof Date ? a.date : new Date(a.date);
+          const dateB = b.date instanceof Date ? b.date : new Date(b.date);
+          comparison = dateA.getTime() - dateB.getTime();
           break;
         case 'description':
           comparison = a.description.localeCompare(b.description);
@@ -82,9 +84,10 @@ export function TransactionList() {
           {/* Header */}
           <div className="sticky top-0 bg-gray-100 border-b z-10 flex text-sm font-semibold">
             <SortableHeader label="Date" field="date" currentField={sortField} direction={sortDirection} onSort={handleSort} width="120px" />
-            <SortableHeader label="Description" field="description" currentField={sortField} direction={sortDirection} onSort={handleSort} width="300px" />
+            <SortableHeader label="Description" field="description" currentField={sortField} direction={sortDirection} onSort={handleSort} width="250px" />
             <SortableHeader label="Amount" field="amount" currentField={sortField} direction={sortDirection} onSort={handleSort} width="120px" />
-            <SortableHeader label="Category" field="category" currentField={sortField} direction={sortDirection} onSort={handleSort} width="180px" />
+            <SortableHeader label="Category" field="category" currentField={sortField} direction={sortDirection} onSort={handleSort} width="150px" />
+            <div className="p-2 border-r" style={{ width: '200px' }}>Source</div>
             <div className="p-2 border-r w-24 text-center">Exclude</div>
           </div>
 
@@ -109,13 +112,13 @@ export function TransactionList() {
                 <div className="p-2 border-r" style={{ width: '120px' }}>
                   {formatDate(transaction.date)}
                 </div>
-                <div className="p-2 border-r truncate" style={{ width: '300px' }} title={transaction.description}>
+                <div className="p-2 border-r truncate" style={{ width: '250px' }} title={transaction.description}>
                   {transaction.description}
                 </div>
                 <div className={`p-2 border-r text-right ${transaction.type === 'DEBIT' ? 'text-red-600' : 'text-green-600'}`} style={{ width: '120px' }}>
                   {formatCurrency(Math.abs(transaction.amount))}
                 </div>
-                <div className="p-2 border-r" style={{ width: '180px' }}>
+                <div className="p-2 border-r" style={{ width: '150px' }}>
                   <select
                     value={transaction.categoryId || ''}
                     onChange={(e) => actions.categorizeTransaction(transaction.id, e.target.value)}
@@ -128,6 +131,9 @@ export function TransactionList() {
                       </option>
                     ))}
                   </select>
+                </div>
+                <div className="p-2 border-r truncate text-xs text-gray-600" style={{ width: '200px' }} title={transaction.sourceFile}>
+                  {transaction.sourceFile || '-'}
                 </div>
                 <div className="p-2 flex items-center justify-center" style={{ width: '96px' }}>
                   <input

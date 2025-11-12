@@ -5,6 +5,7 @@ import { StorageManager } from '../lib/storage/manager';
 import { parseFiles } from '../lib/parsers';
 import { CategorizationEngine } from '../lib/categorization/engine';
 import { getDefaultPreferences } from '../lib/defaults';
+import { generateSampleData } from '../lib/sampleData';
 
 // Initial state
 const initialState: AppState = {
@@ -50,12 +51,17 @@ function appReducer(state: AppState, action: AppAction): AppState {
         isLoading: false
       };
 
-    case 'ADD_TRANSACTIONS':
+    case 'ADD_TRANSACTIONS': {
+      // Deduplicate transactions by ID
+      const existingIds = new Set(state.transactions.map(t => t.id));
+      const newTransactions = action.payload.transactions.filter(t => !existingIds.has(t.id));
+
       return {
         ...state,
-        transactions: [...state.transactions, ...action.payload.transactions],
+        transactions: [...state.transactions, ...newTransactions],
         errors: action.payload.errors
       };
+    }
 
     case 'CATEGORIZE_TRANSACTION':
       return {
@@ -315,6 +321,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (confirm('Are you sure you want to clear all data? This cannot be undone.')) {
         storage.clearAll();
         dispatch({ type: 'CLEAR_ALL' });
+      }
+    },
+
+    loadSampleData: async () => {
+      try {
+        const sampleTransactions = await generateSampleData();
+
+        // Auto-categorize sample transactions
+        const engine = new CategorizationEngine(
+          state.categories,
+          state.rules
+        );
+        engine.batchCategorize(sampleTransactions);
+
+        dispatch({
+          type: 'ADD_TRANSACTIONS',
+          payload: {
+            transactions: sampleTransactions,
+            errors: []
+          }
+        });
+      } catch (error) {
+        dispatch({
+          type: 'ADD_ERROR',
+          payload: error instanceof Error ? error.message : 'Error loading sample data'
+        });
       }
     }
   }), [state.categories, state.rules, state.preferences, state.transactions, state.excludedIds, state.manualOverrides, storage]);

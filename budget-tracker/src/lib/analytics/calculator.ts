@@ -5,6 +5,13 @@ export class AnalyticsCalculator {
   constructor(private transactions: Transaction[]) {}
 
   /**
+   * Ensure date is a Date object (handles strings from localStorage)
+   */
+  private ensureDate(date: Date | string): Date {
+    return date instanceof Date ? date : new Date(date);
+  }
+
+  /**
    * Compute all analytics
    */
   computeAll(): DerivedAnalytics {
@@ -101,7 +108,7 @@ export class AnalyticsCalculator {
     // Calculate date range
     let dateRange: { start: Date; end: Date } | null = null;
     if (nonExcluded.length > 0) {
-      const dates = nonExcluded.map(t => t.date.getTime());
+      const dates = nonExcluded.map(t => this.ensureDate(t.date).getTime());
       dateRange = {
         start: new Date(Math.min(...dates)),
         end: new Date(Math.max(...dates))
@@ -109,7 +116,7 @@ export class AnalyticsCalculator {
     }
 
     // Calculate number of unique months
-    const months = new Set(nonExcluded.map(t => format(t.date, 'yyyy-MM')));
+    const months = new Set(nonExcluded.map(t => format(this.ensureDate(t.date), 'yyyy-MM')));
     const monthCount = months.size;
 
     return {
@@ -130,7 +137,7 @@ export class AnalyticsCalculator {
     const groups = new Map<string, Transaction[]>();
 
     this.transactions.forEach(txn => {
-      const key = format(txn.date, 'yyyy-MM');
+      const key = format(this.ensureDate(txn.date), 'yyyy-MM');
       if (!groups.has(key)) {
         groups.set(key, []);
       }
@@ -179,7 +186,7 @@ export class AnalyticsCalculator {
     if (transactions.length < 2) return false;
 
     // Check if intervals are roughly monthly (25-35 days)
-    const dates = transactions.map(t => t.date.getTime()).sort((a, b) => a - b);
+    const dates = transactions.map(t => this.ensureDate(t.date).getTime()).sort((a, b) => a - b);
     const intervals: number[] = [];
 
     for (let i = 1; i < dates.length; i++) {

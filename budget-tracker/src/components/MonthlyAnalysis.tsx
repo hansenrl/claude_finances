@@ -75,7 +75,7 @@ export function MonthlyAnalysis() {
       tooltip: {
         callbacks: {
           label: (context: any) => {
-            const value = context.parsed || context.parsed?.y || 0;
+            const value = context.parsed?.y ?? context.parsed ?? 0;
             return `${context.dataset.label}: ${formatCurrency(value)}`;
           }
         }

@@ -1,4 +1,5 @@
 import { AppProvider } from './context/AppContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { FileUploadZone } from './components/FileUploadZone';
 import { Dashboard } from './components/Dashboard';
 import { CategoryBreakdown } from './components/CategoryBreakdown';
@@ -25,7 +26,9 @@ function AppContent() {
           <FileUploadZone />
 
           {/* Dashboard */}
-          <Dashboard />
+          <ErrorBoundary>
+            <Dashboard />
+          </ErrorBoundary>
 
           {/* Analytics Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -34,7 +37,9 @@ function AppContent() {
           </div>
 
           {/* Monthly Analysis */}
-          <MonthlyAnalysis />
+          <ErrorBoundary>
+            <MonthlyAnalysis />
+          </ErrorBoundary>
 
           {/* Transaction List */}
           <TransactionList />

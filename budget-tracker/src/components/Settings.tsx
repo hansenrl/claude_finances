@@ -122,6 +122,19 @@ export function Settings() {
           </div>
 
           <div className="border-t pt-4">
+            <h3 className="font-semibold mb-3">Sample Data</h3>
+            <button
+              onClick={actions.loadSampleData}
+              className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
+            >
+              Load Sample Data
+            </button>
+            <p className="text-sm text-gray-600 mt-2">
+              Load ~200 sample transactions throughout 2025 for testing. Includes monthly subscriptions and various expense categories.
+            </p>
+          </div>
+
+          <div className="border-t pt-4">
             <h3 className="font-semibold mb-3 text-red-600">Danger Zone</h3>
             <button
               onClick={actions.clearAllData}

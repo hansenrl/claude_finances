@@ -1,8 +1,8 @@
 import Papa from 'papaparse';
 import type { Transaction, ParseError } from '../../types';
-import { generateTransactionId } from '../utils';
+import { generateTransactionId, truncateFilename } from '../utils';
 
-export async function parseCSV(content: string, _filename?: string): Promise<{
+export async function parseCSV(content: string, filename?: string): Promise<{
   transactions: Transaction[];
   errors: ParseError[];
 }> {
@@ -85,6 +85,7 @@ export async function parseCSV(content: string, _filename?: string): Promise<{
               type,
               isExcluded: false,
               source: 'CSV',
+              sourceFile: filename ? truncateFilename(filename) : undefined,
               isManuallyCategorized: false,
               // Store original category from CSV as memo for reference
               memo: category ? `Original category: ${category}` : undefined,
