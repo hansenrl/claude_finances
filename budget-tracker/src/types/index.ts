@@ -1,0 +1,124 @@
+// Core Transaction Model
+export interface Transaction {
+  id: string; // SHA-256 hash of key fields
+  date: Date;
+  description: string;
+  amount: number; // Negative = debit, positive = credit
+  type: 'DEBIT' | 'CREDIT';
+  categoryId?: string;
+  isExcluded: boolean;
+  source: 'QFX' | 'CSV';
+  accountId?: string;
+  transactionId?: string; // Original FITID
+  memo?: string;
+  isManuallyCategorized: boolean;
+}
+
+// Category Model
+export interface Category {
+  id: string;
+  name: string;
+  color: string; // Hex color for charts
+  patterns: string[]; // Regex patterns
+  isCustom: boolean;
+  isDefault: boolean; // Built-in category
+}
+
+// Categorization Rule
+export interface CategorizationRule {
+  id: string;
+  categoryId: string;
+  pattern: string; // Regex pattern
+  priority: number; // Lower = higher priority
+  enabled: boolean;
+}
+
+// User Preferences
+export interface Preferences {
+  categories: Category[];
+  rules: CategorizationRule[];
+  version: number; // Schema version
+  lastModified: Date;
+}
+
+// Monthly Summary
+export interface MonthlySummary {
+  month: string; // "2025-01" format
+  totalDebits: number;
+  totalCredits: number;
+  net: number;
+  categoryTotals: Record<string, number>;
+  transactionCount: number;
+}
+
+// Repeated Expense
+export interface RepeatedExpense {
+  merchantPattern: string;
+  occurrences: number;
+  averageAmount: number;
+  totalAmount: number;
+  transactionIds: string[];
+  isLikelySubscription: boolean;
+  estimatedMonthly?: number;
+}
+
+// Derived Analytics
+export interface DerivedAnalytics {
+  monthlySummaries: MonthlySummary[];
+  categoryTotals: Record<string, number>;
+  repeatedExpenses: RepeatedExpense[];
+  overallStats: {
+    totalDebits: number;
+    totalCredits: number;
+    net: number;
+    transactionCount: number;
+    dateRange: { start: Date; end: Date } | null;
+    monthCount: number;
+    averageMonthlyExpenses: number;
+  };
+}
+
+// Parse Error
+export interface ParseError {
+  line?: number;
+  field?: string;
+  message: string;
+  severity: 'error' | 'warning';
+}
+
+// Parse Result
+export interface ParseResult {
+  transactions: Transaction[];
+  errors: ParseError[];
+}
+
+// App State
+export interface AppState {
+  transactions: Transaction[];
+  categories: Category[];
+  rules: CategorizationRule[];
+  preferences: Preferences;
+  excludedIds: Set<string>;
+  manualOverrides: Map<string, string>;
+  isLoading: boolean;
+  errors: string[];
+}
+
+// App Context Value
+export interface AppContextValue {
+  state: AppState;
+  actions: {
+    uploadFiles: (files: File[]) => Promise<void>;
+    categorizeTransaction: (id: string, categoryId: string) => void;
+    toggleExclusion: (id: string) => void;
+    addCategory: (category: Category) => void;
+    addRule: (rule: CategorizationRule) => void;
+    deleteCategory: (categoryId: string) => void;
+    deleteRule: (ruleId: string) => void;
+    updateRule: (rule: CategorizationRule) => void;
+    exportPreferences: () => void;
+    importPreferences: (file: File) => Promise<void>;
+    exportData: () => void;
+    clearAllData: () => void;
+  };
+}

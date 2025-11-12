@@ -1,0 +1,286 @@
+import type { Transaction, Preferences } from '../../types';
+import { format } from 'date-fns';
+import { downloadBlob } from '../utils';
+
+const STORAGE_KEYS = {
+  TRANSACTIONS: 'budget_tracker_transactions',
+  PREFERENCES: 'budget_tracker_preferences',
+  EXCLUDED_IDS: 'budget_tracker_excluded_ids',
+  MANUAL_OVERRIDES: 'budget_tracker_manual_overrides',
+  VERSION: 'budget_tracker_version'
+} as const;
+
+const CURRENT_VERSION = 1;
+
+export class StorageManager {
+  /**
+   * Save transactions to localStorage
+   */
+  saveTransactions(transactions: Transaction[]): void {
+    try {
+      const serialized = JSON.stringify(transactions, this.dateReplacer);
+      localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, serialized);
+    } catch (e) {
+      if (this.isQuotaExceeded(e)) {
+        throw new Error('Storage quota exceeded. Please clear old data or export to file.');
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Load transactions from localStorage
+   */
+  loadTransactions(): Transaction[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
+      if (!data) return [];
+
+      const parsed = JSON.parse(data, this.dateReviver);
+      return parsed;
+    } catch (error) {
+      console.error('Error loading transactions:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Save preferences to localStorage
+   */
+  savePreferences(preferences: Preferences): void {
+    try {
+      const data = {
+        ...preferences,
+        version: CURRENT_VERSION,
+        lastModified: new Date()
+      };
+      localStorage.setItem(STORAGE_KEYS.PREFERENCES, JSON.stringify(data, this.dateReplacer));
+    } catch (e) {
+      if (this.isQuotaExceeded(e)) {
+        throw new Error('Storage quota exceeded.');
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Load preferences from localStorage
+   */
+  loadPreferences(): Preferences | null {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.PREFERENCES);
+      if (!data) return null;
+
+      const parsed = JSON.parse(data, this.dateReviver);
+
+      // Handle version migrations
+      if (parsed.version !== CURRENT_VERSION) {
+        return this.migratePreferences(parsed);
+      }
+
+      return parsed;
+    } catch (error) {
+      console.error('Error loading preferences:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Save excluded transaction IDs
+   */
+  saveExcludedIds(ids: Set<string>): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.EXCLUDED_IDS, JSON.stringify(Array.from(ids)));
+    } catch (e) {
+      console.error('Error saving excluded IDs:', e);
+    }
+  }
+
+  /**
+   * Load excluded transaction IDs
+   */
+  loadExcludedIds(): Set<string> {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.EXCLUDED_IDS);
+      if (!data) return new Set();
+
+      const parsed = JSON.parse(data);
+      return new Set(parsed);
+    } catch (error) {
+      console.error('Error loading excluded IDs:', error);
+      return new Set();
+    }
+  }
+
+  /**
+   * Save manual category overrides
+   */
+  saveManualOverrides(overrides: Map<string, string>): void {
+    try {
+      const obj = Object.fromEntries(overrides);
+      localStorage.setItem(STORAGE_KEYS.MANUAL_OVERRIDES, JSON.stringify(obj));
+    } catch (e) {
+      console.error('Error saving manual overrides:', e);
+    }
+  }
+
+  /**
+   * Load manual category overrides
+   */
+  loadManualOverrides(): Map<string, string> {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.MANUAL_OVERRIDES);
+      if (!data) return new Map();
+
+      const parsed = JSON.parse(data);
+      return new Map(Object.entries(parsed));
+    } catch (error) {
+      console.error('Error loading manual overrides:', error);
+      return new Map();
+    }
+  }
+
+  /**
+   * Export preferences as JSON blob
+   */
+  exportPreferences(preferences: Preferences): void {
+    const json = JSON.stringify(preferences, this.dateReplacer, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const filename = `budget_preferences_${format(new Date(), 'yyyy-MM-dd')}.json`;
+    downloadBlob(blob, filename);
+  }
+
+  /**
+   * Export all data (transactions + preferences + state) as JSON blob
+   */
+  exportAllData(
+    transactions: Transaction[],
+    preferences: Preferences,
+    excludedIds: Set<string>,
+    manualOverrides: Map<string, string>
+  ): void {
+    const data = {
+      transactions,
+      preferences,
+      excludedIds: Array.from(excludedIds),
+      manualOverrides: Object.fromEntries(manualOverrides),
+      exportedAt: new Date(),
+      version: CURRENT_VERSION
+    };
+
+    const json = JSON.stringify(data, this.dateReplacer, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const filename = `budget_tracker_data_${format(new Date(), 'yyyy-MM-dd')}.json`;
+    downloadBlob(blob, filename);
+  }
+
+  /**
+   * Import preferences from file
+   */
+  async importPreferences(file: File): Promise<Preferences> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target?.result as string, this.dateReviver);
+
+          // Validate structure
+          if (!this.isValidPreferences(data)) {
+            reject(new Error('Invalid preferences file structure'));
+            return;
+          }
+
+          resolve(data);
+        } catch (err) {
+          reject(new Error(`Error parsing preferences file: ${err}`));
+        }
+      };
+      reader.onerror = () => reject(new Error('Error reading file'));
+      reader.readAsText(file);
+    });
+  }
+
+  /**
+   * Clear all data from localStorage
+   */
+  clearAll(): void {
+    Object.values(STORAGE_KEYS).forEach(key => {
+      localStorage.removeItem(key);
+    });
+  }
+
+  /**
+   * Get storage usage information
+   */
+  getStorageInfo(): { used: number; available: number; percentUsed: number } {
+    let used = 0;
+
+    Object.values(STORAGE_KEYS).forEach(key => {
+      const item = localStorage.getItem(key);
+      if (item) {
+        used += item.length * 2; // UTF-16 = 2 bytes per char
+      }
+    });
+
+    const available = 5 * 1024 * 1024; // ~5MB typical limit
+
+    return {
+      used,
+      available,
+      percentUsed: (used / available) * 100
+    };
+  }
+
+  /**
+   * JSON replacer for Date serialization
+   */
+  private dateReplacer(_key: string, value: any): any {
+    if (value instanceof Date) {
+      return { __type: 'Date', value: value.toISOString() };
+    }
+    return value;
+  }
+
+  /**
+   * JSON reviver for Date deserialization
+   */
+  private dateReviver(_key: string, value: any): any {
+    if (value && value.__type === 'Date') {
+      return new Date(value.value);
+    }
+    return value;
+  }
+
+  /**
+   * Check if error is quota exceeded
+   */
+  private isQuotaExceeded(e: any): boolean {
+    return e instanceof DOMException && (
+      e.code === 22 ||
+      e.code === 1014 ||
+      e.name === 'QuotaExceededError' ||
+      e.name === 'NS_ERROR_DOM_QUOTA_REACHED'
+    );
+  }
+
+  /**
+   * Migrate preferences from old version to current
+   */
+  private migratePreferences(old: any): Preferences {
+    // Future migration logic
+    return old;
+  }
+
+  /**
+   * Validate preferences structure
+   */
+  private isValidPreferences(data: any): boolean {
+    return (
+      data &&
+      Array.isArray(data.categories) &&
+      Array.isArray(data.rules) &&
+      data.categories.every((c: any) => c.id && c.name && c.color) &&
+      data.rules.every((r: any) => r.id && r.categoryId && r.pattern !== undefined)
+    );
+  }
+}
