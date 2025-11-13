@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - 'claude/**'  # Test builds on feature branches
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
@@ -48,6 +49,7 @@ jobs:
           path: ./budget-tracker/dist
 
   deploy:
+    if: github.ref == 'refs/heads/main'  # Only deploy from main branch
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
