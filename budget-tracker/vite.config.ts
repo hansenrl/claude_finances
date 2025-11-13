@@ -4,6 +4,7 @@ import { viteSingleFile } from 'vite-plugin-singlefile'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: '/claude_finances/',
   plugins: [react(), viteSingleFile()],
   build: {
     target: 'es2020',
