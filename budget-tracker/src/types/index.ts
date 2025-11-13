@@ -15,12 +15,22 @@ export interface Transaction {
   isManuallyCategorized: boolean;
 }
 
+// Pattern Model
+export interface CategoryPattern {
+  id: string;
+  pattern: string; // Regex pattern
+  priority: number; // Lower = higher priority (matches first)
+  enabled: boolean;
+  isDefault: boolean; // Built-in pattern vs user-added
+  description?: string; // Optional label/description
+}
+
 // Category Model
 export interface Category {
   id: string;
   name: string;
   color: string; // Hex color for charts
-  patterns: string[]; // Regex patterns
+  patterns: CategoryPattern[]; // Regex patterns with metadata
   isCustom: boolean;
   isDefault: boolean; // Built-in category
 }
@@ -113,10 +123,16 @@ export interface AppContextValue {
     categorizeTransaction: (id: string, categoryId: string) => void;
     toggleExclusion: (id: string) => void;
     addCategory: (category: Category) => void;
+    updateCategory: (category: Category) => void;
     addRule: (rule: CategorizationRule) => void;
     deleteCategory: (categoryId: string) => void;
     deleteRule: (ruleId: string) => void;
     updateRule: (rule: CategorizationRule) => void;
+    // Pattern management
+    addPatternToCategory: (categoryId: string, pattern: CategoryPattern) => void;
+    updatePattern: (categoryId: string, pattern: CategoryPattern) => void;
+    deletePattern: (categoryId: string, patternId: string) => void;
+    reorderPatterns: (categoryId: string, patterns: CategoryPattern[]) => void;
     exportPreferences: () => void;
     importPreferences: (file: File) => Promise<void>;
     exportData: () => void;

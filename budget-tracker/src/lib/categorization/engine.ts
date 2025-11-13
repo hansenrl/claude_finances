@@ -1,5 +1,10 @@
-import type { Transaction, Category, CategorizationRule } from '../../types';
+import type { Transaction, Category, CategorizationRule, CategoryPattern } from '../../types';
 import { generateId } from '../utils';
+
+interface PatternMatch {
+  categoryId: string;
+  priority: number;
+}
 
 export class CategorizationEngine {
   constructor(
@@ -8,24 +13,59 @@ export class CategorizationEngine {
   ) {}
 
   /**
-   * Categorize a single transaction based on rules
+   * Categorize a single transaction based on category patterns
    */
   categorize(transaction: Transaction): string | undefined {
-    // Sort rules by priority (lower number = higher priority)
-    const sortedRules = this.rules
-      .filter(r => r.enabled)
-      .sort((a, b) => a.priority - b.priority);
+    // Collect all enabled patterns from all categories
+    const allPatterns: Array<PatternMatch & { pattern: CategoryPattern }> = [];
 
-    // Find first matching rule
-    for (const rule of sortedRules) {
+    for (const category of this.categories) {
+      for (const pattern of category.patterns) {
+        if (pattern.enabled) {
+          allPatterns.push({
+            categoryId: category.id,
+            priority: pattern.priority,
+            pattern
+          });
+        }
+      }
+    }
+
+    // Also include legacy rules for backward compatibility
+    const legacyMatches: Array<PatternMatch & { pattern: string }> = this.rules
+      .filter(r => r.enabled)
+      .map(r => ({
+        categoryId: r.categoryId,
+        priority: r.priority,
+        pattern: r.pattern
+      }));
+
+    // Sort all patterns by priority (lower number = higher priority)
+    allPatterns.sort((a, b) => a.priority - b.priority);
+
+    // Find first matching pattern
+    for (const item of allPatterns) {
       try {
-        const regex = new RegExp(rule.pattern, 'i');
+        const regex = new RegExp(item.pattern.pattern, 'i');
         if (regex.test(transaction.description)) {
-          return rule.categoryId;
+          return item.categoryId;
         }
       } catch (error) {
-        // Invalid regex pattern, skip this rule
-        console.warn(`Invalid regex pattern in rule ${rule.id}: ${rule.pattern}`);
+        // Invalid regex pattern, skip this pattern
+        console.warn(`Invalid regex pattern in category ${item.categoryId}: ${item.pattern.pattern}`);
+        continue;
+      }
+    }
+
+    // Check legacy rules if no category pattern matched
+    for (const item of legacyMatches) {
+      try {
+        const regex = new RegExp(item.pattern, 'i');
+        if (regex.test(transaction.description)) {
+          return item.categoryId;
+        }
+      } catch (error) {
+        console.warn(`Invalid regex pattern in legacy rule: ${item.pattern}`);
         continue;
       }
     }

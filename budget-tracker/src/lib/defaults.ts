@@ -1,21 +1,149 @@
-import type { Category, CategorizationRule } from '../types';
+import type { Category, CategorizationRule, CategoryPattern } from '../types';
 
 export const DEFAULT_CATEGORIES: Category[] = [
-  { id: 'groceries', name: 'Groceries', color: '#10b981', patterns: [], isCustom: false, isDefault: true },
-  { id: 'restaurants', name: 'Restaurants & Dining', color: '#f59e0b', patterns: [], isCustom: false, isDefault: true },
-  { id: 'transportation', name: 'Transportation', color: '#3b82f6', patterns: [], isCustom: false, isDefault: true },
-  { id: 'gas', name: 'Gas & Fuel', color: '#8b5cf6', patterns: [], isCustom: false, isDefault: true },
-  { id: 'entertainment', name: 'Entertainment', color: '#ec4899', patterns: [], isCustom: false, isDefault: true },
-  { id: 'shopping', name: 'Shopping & Retail', color: '#ef4444', patterns: [], isCustom: false, isDefault: true },
-  { id: 'utilities', name: 'Utilities', color: '#14b8a6', patterns: [], isCustom: false, isDefault: true },
-  { id: 'healthcare', name: 'Healthcare', color: '#06b6d4', patterns: [], isCustom: false, isDefault: true },
-  { id: 'insurance', name: 'Insurance', color: '#6366f1', patterns: [], isCustom: false, isDefault: true },
-  { id: 'housing', name: 'Housing', color: '#84cc16', patterns: [], isCustom: false, isDefault: true },
-  { id: 'subscriptions', name: 'Subscriptions', color: '#a855f7', patterns: [], isCustom: false, isDefault: true },
-  { id: 'travel', name: 'Travel', color: '#0ea5e9', patterns: [], isCustom: false, isDefault: true },
-  { id: 'services', name: 'Services', color: '#f97316', patterns: [], isCustom: false, isDefault: true },
-  { id: 'income', name: 'Income/Payments', color: '#22c55e', patterns: [], isCustom: false, isDefault: true },
-  { id: 'other', name: 'Other', color: '#64748b', patterns: [], isCustom: false, isDefault: true },
+  {
+    id: 'groceries',
+    name: 'Groceries',
+    color: '#10b981',
+    patterns: [
+      { id: 'gp1', pattern: '(safeway|kroger|whole foods|trader joe|albertsons|publix|wegmans)', priority: 10, enabled: true, isDefault: true, description: 'Major grocery chains' },
+      { id: 'gp2', pattern: '(grocery|supermarket|market)', priority: 15, enabled: true, isDefault: true, description: 'Generic grocery keywords' },
+    ],
+    isCustom: false,
+    isDefault: true
+  },
+  {
+    id: 'restaurants',
+    name: 'Restaurants & Dining',
+    color: '#f59e0b',
+    patterns: [
+      { id: 'rp1', pattern: '(starbucks|coffee|cafe|restaurant|dining)', priority: 10, enabled: true, isDefault: true, description: 'Coffee shops and restaurants' },
+      { id: 'rp2', pattern: '(mcdonald|burger king|wendy|subway|chipotle|panera)', priority: 10, enabled: true, isDefault: true, description: 'Fast food chains' },
+      { id: 'rp3', pattern: '(pizza|taco|burrito)', priority: 12, enabled: true, isDefault: true, description: 'Common food types' },
+    ],
+    isCustom: false,
+    isDefault: true
+  },
+  {
+    id: 'transportation',
+    name: 'Transportation',
+    color: '#3b82f6',
+    patterns: [
+      { id: 'tp1', pattern: '(uber|lyft|taxi|transit|metro|bart)', priority: 10, enabled: true, isDefault: true, description: 'Rideshare and public transit' },
+    ],
+    isCustom: false,
+    isDefault: true
+  },
+  {
+    id: 'gas',
+    name: 'Gas & Fuel',
+    color: '#8b5cf6',
+    patterns: [
+      { id: 'gap1', pattern: '(shell|chevron|exxon|mobil|bp|arco|gas|fuel)', priority: 10, enabled: true, isDefault: true, description: 'Gas stations' },
+    ],
+    isCustom: false,
+    isDefault: true
+  },
+  {
+    id: 'entertainment',
+    name: 'Entertainment',
+    color: '#ec4899',
+    patterns: [
+      { id: 'ep1', pattern: '(movie|theater|cinema|concert|ticket)', priority: 10, enabled: true, isDefault: true, description: 'Movies and events' },
+    ],
+    isCustom: false,
+    isDefault: true
+  },
+  {
+    id: 'shopping',
+    name: 'Shopping & Retail',
+    color: '#ef4444',
+    patterns: [
+      { id: 'sp1', pattern: '(amazon|target|walmart|costco|best buy)', priority: 10, enabled: true, isDefault: true, description: 'Major retailers' },
+    ],
+    isCustom: false,
+    isDefault: true
+  },
+  {
+    id: 'utilities',
+    name: 'Utilities',
+    color: '#14b8a6',
+    patterns: [
+      { id: 'up1', pattern: '(electric|power|water|internet|comcast|at&t|verizon)', priority: 10, enabled: true, isDefault: true, description: 'Utilities and internet' },
+    ],
+    isCustom: false,
+    isDefault: true
+  },
+  {
+    id: 'healthcare',
+    name: 'Healthcare',
+    color: '#06b6d4',
+    patterns: [
+      { id: 'hp1', pattern: '(pharmacy|cvs|walgreens|doctor|medical|health)', priority: 10, enabled: true, isDefault: true, description: 'Medical and pharmacy' },
+    ],
+    isCustom: false,
+    isDefault: true
+  },
+  {
+    id: 'insurance',
+    name: 'Insurance',
+    color: '#6366f1',
+    patterns: [],
+    isCustom: false,
+    isDefault: true
+  },
+  {
+    id: 'housing',
+    name: 'Housing',
+    color: '#84cc16',
+    patterns: [],
+    isCustom: false,
+    isDefault: true
+  },
+  {
+    id: 'subscriptions',
+    name: 'Subscriptions',
+    color: '#a855f7',
+    patterns: [
+      { id: 'subp1', pattern: '(netflix|spotify|hulu|disney|amazon prime|apple music)', priority: 10, enabled: true, isDefault: true, description: 'Streaming services' },
+    ],
+    isCustom: false,
+    isDefault: true
+  },
+  {
+    id: 'travel',
+    name: 'Travel',
+    color: '#0ea5e9',
+    patterns: [],
+    isCustom: false,
+    isDefault: true
+  },
+  {
+    id: 'services',
+    name: 'Services',
+    color: '#f97316',
+    patterns: [],
+    isCustom: false,
+    isDefault: true
+  },
+  {
+    id: 'income',
+    name: 'Income/Payments',
+    color: '#22c55e',
+    patterns: [
+      { id: 'ip1', pattern: '(payment|credit|refund)', priority: 10, enabled: true, isDefault: true, description: 'Payments and refunds' },
+    ],
+    isCustom: false,
+    isDefault: true
+  },
+  {
+    id: 'other',
+    name: 'Other',
+    color: '#64748b',
+    patterns: [],
+    isCustom: false,
+    isDefault: true
+  },
 ];
 
 export const DEFAULT_RULES: CategorizationRule[] = [

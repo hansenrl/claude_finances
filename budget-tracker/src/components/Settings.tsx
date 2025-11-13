@@ -1,11 +1,25 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { generateId } from '../lib/utils';
+import type { CategoryPattern } from '../types';
 
 export function Settings() {
   const { state, actions } = useApp();
   const [activeTab, setActiveTab] = useState<'categories' | 'data'>('categories');
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const toggleCategory = (categoryId: string) => {
+    setExpandedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(categoryId)) {
+        next.delete(categoryId);
+      } else {
+        next.add(categoryId);
+      }
+      return next;
+    });
+  };
 
   const handleImportPreferences = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -28,7 +42,7 @@ export function Settings() {
               : 'text-gray-500'
             }`}
           >
-            Categories
+            Categories & Patterns
           </button>
           <button
             onClick={() => setActiveTab('data')}
@@ -45,35 +59,31 @@ export function Settings() {
       {/* Categories Tab */}
       {activeTab === 'categories' && (
         <div>
-          <h3 className="font-semibold mb-3">Categories</h3>
-          <div className="space-y-2 mb-4">
-            {state.categories.map(cat => (
-              <div key={cat.id} className="flex items-center justify-between p-2 border rounded">
-                <div className="flex items-center">
-                  <span
-                    className="inline-block w-4 h-4 rounded-full mr-3"
-                    style={{ backgroundColor: cat.color }}
-                  />
-                  <span>{cat.name}</span>
-                  {cat.isDefault && (
-                    <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                      Default
-                    </span>
-                  )}
-                </div>
-                {cat.isCustom && (
-                  <button
-                    onClick={() => actions.deleteCategory(cat.id)}
-                    className="text-red-600 hover:text-red-800 text-sm"
-                  >
-                    Delete
-                  </button>
-                )}
-              </div>
+          <div className="mb-4">
+            <h3 className="font-semibold mb-2">Manage Categories & Categorization Patterns</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Click on a category to view and edit its regex patterns. Patterns with lower priority numbers are matched first.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            {state.categories.map(category => (
+              <CategoryCard
+                key={category.id}
+                category={category}
+                isExpanded={expandedCategories.has(category.id)}
+                onToggle={() => toggleCategory(category.id)}
+                onAddPattern={(pattern) => actions.addPatternToCategory(category.id, pattern)}
+                onUpdatePattern={(pattern) => actions.updatePattern(category.id, pattern)}
+                onDeletePattern={(patternId) => actions.deletePattern(category.id, patternId)}
+                onDeleteCategory={() => actions.deleteCategory(category.id)}
+              />
             ))}
           </div>
 
-          <NewCategoryForm onAdd={actions.addCategory} />
+          <div className="mt-6">
+            <NewCategoryForm onAdd={actions.addCategory} />
+          </div>
         </div>
       )}
 
@@ -97,7 +107,7 @@ export function Settings() {
               </button>
             </div>
             <p className="text-sm text-gray-600 mt-2">
-              Export your categories, rules, and settings to a JSON file.
+              Export your categories, patterns, rules, and settings to a JSON file.
             </p>
           </div>
 
@@ -152,6 +162,384 @@ export function Settings() {
   );
 }
 
+interface CategoryCardProps {
+  category: any;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onAddPattern: (pattern: CategoryPattern) => void;
+  onUpdatePattern: (pattern: CategoryPattern) => void;
+  onDeletePattern: (patternId: string) => void;
+  onDeleteCategory: () => void;
+}
+
+function CategoryCard({
+  category,
+  isExpanded,
+  onToggle,
+  onAddPattern,
+  onUpdatePattern,
+  onDeletePattern,
+  onDeleteCategory
+}: CategoryCardProps) {
+  const patternCount = category.patterns.length;
+
+  return (
+    <div className="border rounded overflow-hidden">
+      {/* Header */}
+      <div
+        onClick={onToggle}
+        className="flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 cursor-pointer"
+      >
+        <div className="flex items-center flex-1">
+          <span
+            className="inline-block w-4 h-4 rounded-full mr-3"
+            style={{ backgroundColor: category.color }}
+          />
+          <span className="font-medium">{category.name}</span>
+          {category.isDefault && (
+            <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+              Default
+            </span>
+          )}
+          <span className="ml-3 text-sm text-gray-600">
+            {patternCount} {patternCount === 1 ? 'pattern' : 'patterns'}
+          </span>
+        </div>
+        <div className="flex items-center space-x-2">
+          {category.isCustom && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (confirm(`Delete category "${category.name}"?`)) {
+                  onDeleteCategory();
+                }
+              }}
+              className="text-red-600 hover:text-red-800 text-sm px-2 py-1"
+            >
+              Delete
+            </button>
+          )}
+          <span className="text-gray-400">
+            {isExpanded ? '▼' : '▶'}
+          </span>
+        </div>
+      </div>
+
+      {/* Expanded Content */}
+      {isExpanded && (
+        <div className="p-4 border-t bg-white">
+          {patternCount === 0 ? (
+            <p className="text-sm text-gray-500 mb-3">
+              No patterns defined. Add a pattern to automatically categorize transactions.
+            </p>
+          ) : (
+            <div className="space-y-2 mb-4">
+              {category.patterns
+                .sort((a: CategoryPattern, b: CategoryPattern) => a.priority - b.priority)
+                .map((pattern: CategoryPattern) => (
+                  <PatternRow
+                    key={pattern.id}
+                    pattern={pattern}
+                    onUpdate={onUpdatePattern}
+                    onDelete={onDeletePattern}
+                  />
+                ))}
+            </div>
+          )}
+
+          <NewPatternForm
+            categoryId={category.id}
+            onAdd={onAddPattern}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface PatternRowProps {
+  pattern: CategoryPattern;
+  onUpdate: (pattern: CategoryPattern) => void;
+  onDelete: (patternId: string) => void;
+}
+
+function PatternRow({ pattern, onUpdate, onDelete }: PatternRowProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedPattern, setEditedPattern] = useState(pattern.pattern);
+  const [editedPriority, setEditedPriority] = useState(pattern.priority.toString());
+  const [editedDescription, setEditedDescription] = useState(pattern.description || '');
+  const [testText, setTestText] = useState('');
+  const [testResult, setTestResult] = useState<boolean | null>(null);
+
+  const handleSave = () => {
+    const priority = parseInt(editedPriority) || 10;
+    onUpdate({
+      ...pattern,
+      pattern: editedPattern,
+      priority,
+      description: editedDescription || undefined
+    });
+    setIsEditing(false);
+  };
+
+  const handleTest = () => {
+    try {
+      const regex = new RegExp(editedPattern, 'i');
+      setTestResult(regex.test(testText));
+    } catch (error) {
+      setTestResult(null);
+      alert('Invalid regex pattern');
+    }
+  };
+
+  const toggleEnabled = () => {
+    onUpdate({ ...pattern, enabled: !pattern.enabled });
+  };
+
+  if (isEditing) {
+    return (
+      <div className="border rounded p-3 bg-gray-50 space-y-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">
+            Regex Pattern
+          </label>
+          <input
+            type="text"
+            value={editedPattern}
+            onChange={(e) => setEditedPattern(e.target.value)}
+            className="w-full px-2 py-1 border rounded font-mono text-sm"
+            placeholder="(example|pattern|here)"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Priority
+            </label>
+            <input
+              type="number"
+              value={editedPriority}
+              onChange={(e) => setEditedPriority(e.target.value)}
+              className="w-full px-2 py-1 border rounded text-sm"
+              min="0"
+              max="100"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Description (optional)
+            </label>
+            <input
+              type="text"
+              value={editedDescription}
+              onChange={(e) => setEditedDescription(e.target.value)}
+              className="w-full px-2 py-1 border rounded text-sm"
+              placeholder="e.g., Coffee shops"
+            />
+          </div>
+        </div>
+
+        {/* Pattern Tester */}
+        <div className="border-t pt-3">
+          <label className="block text-xs font-medium text-gray-700 mb-1">
+            Test Pattern
+          </label>
+          <div className="flex space-x-2">
+            <input
+              type="text"
+              value={testText}
+              onChange={(e) => setTestText(e.target.value)}
+              className="flex-1 px-2 py-1 border rounded text-sm"
+              placeholder="Enter test text (e.g., 'STARBUCKS STORE #1234')"
+            />
+            <button
+              onClick={handleTest}
+              className="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
+            >
+              Test
+            </button>
+          </div>
+          {testResult !== null && (
+            <p className={`text-xs mt-1 ${testResult ? 'text-green-600' : 'text-red-600'}`}>
+              {testResult ? '✓ Match!' : '✗ No match'}
+            </p>
+          )}
+        </div>
+
+        <div className="flex space-x-2">
+          <button
+            onClick={handleSave}
+            className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+          >
+            Save
+          </button>
+          <button
+            onClick={() => setIsEditing(false)}
+            className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 text-sm"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`border rounded p-2 ${!pattern.enabled ? 'bg-gray-100 opacity-60' : 'bg-white'}`}>
+      <div className="flex items-center justify-between">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center space-x-2">
+            <code className="text-sm font-mono text-blue-600 truncate">
+              {pattern.pattern}
+            </code>
+            {pattern.isDefault && (
+              <span className="text-xs bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded flex-shrink-0">
+                Default
+              </span>
+            )}
+            <span className="text-xs text-gray-500 flex-shrink-0">
+              Priority: {pattern.priority}
+            </span>
+          </div>
+          {pattern.description && (
+            <p className="text-xs text-gray-600 mt-1">{pattern.description}</p>
+          )}
+        </div>
+        <div className="flex items-center space-x-2 ml-3 flex-shrink-0">
+          <button
+            onClick={toggleEnabled}
+            className={`text-xs px-2 py-1 rounded ${
+              pattern.enabled
+                ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+            }`}
+          >
+            {pattern.enabled ? 'Enabled' : 'Disabled'}
+          </button>
+          <button
+            onClick={() => setIsEditing(true)}
+            className="text-blue-600 hover:text-blue-800 text-sm"
+          >
+            Edit
+          </button>
+          <button
+            onClick={() => {
+              if (confirm('Delete this pattern?')) {
+                onDelete(pattern.id);
+              }
+            }}
+            className="text-red-600 hover:text-red-800 text-sm"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface NewPatternFormProps {
+  categoryId: string;
+  onAdd: (pattern: CategoryPattern) => void;
+}
+
+function NewPatternForm({ categoryId, onAdd }: NewPatternFormProps) {
+  const [isAdding, setIsAdding] = useState(false);
+  const [pattern, setPattern] = useState('');
+  const [priority, setPriority] = useState('50');
+  const [description, setDescription] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pattern.trim()) {
+      onAdd({
+        id: generateId(),
+        pattern: pattern.trim(),
+        priority: parseInt(priority) || 50,
+        enabled: true,
+        isDefault: false,
+        description: description.trim() || undefined
+      });
+      setPattern('');
+      setPriority('50');
+      setDescription('');
+      setIsAdding(false);
+    }
+  };
+
+  if (!isAdding) {
+    return (
+      <button
+        onClick={() => setIsAdding(true)}
+        className="text-blue-600 hover:text-blue-800 text-sm"
+      >
+        + Add Pattern
+      </button>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="border rounded p-3 bg-gray-50 space-y-2">
+      <div>
+        <label className="block text-xs font-medium text-gray-700 mb-1">
+          Regex Pattern
+        </label>
+        <input
+          type="text"
+          value={pattern}
+          onChange={(e) => setPattern(e.target.value)}
+          placeholder="(example|pattern|here)"
+          className="w-full px-2 py-1 border rounded font-mono text-sm"
+          autoFocus
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">
+            Priority (0-100)
+          </label>
+          <input
+            type="number"
+            value={priority}
+            onChange={(e) => setPriority(e.target.value)}
+            className="w-full px-2 py-1 border rounded text-sm"
+            min="0"
+            max="100"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">
+            Description
+          </label>
+          <input
+            type="text"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Optional"
+            className="w-full px-2 py-1 border rounded text-sm"
+          />
+        </div>
+      </div>
+      <div className="flex space-x-2">
+        <button
+          type="submit"
+          className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+        >
+          Add
+        </button>
+        <button
+          type="button"
+          onClick={() => setIsAdding(false)}
+          className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 text-sm"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
 function NewCategoryForm({ onAdd }: { onAdd: (category: any) => void }) {
   const [isAdding, setIsAdding] = useState(false);
   const [name, setName] = useState('');
@@ -178,7 +566,7 @@ function NewCategoryForm({ onAdd }: { onAdd: (category: any) => void }) {
     return (
       <button
         onClick={() => setIsAdding(true)}
-        className="text-blue-600 hover:text-blue-800 text-sm"
+        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
       >
         + Add Custom Category
       </button>

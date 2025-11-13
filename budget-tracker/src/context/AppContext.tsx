@@ -1,6 +1,6 @@
 import { createContext, useContext, useReducer, useEffect, useMemo } from 'react';
 import type { ReactNode } from 'react';
-import type { AppState, AppContextValue, Transaction, Category, CategorizationRule, Preferences } from '../types';
+import type { AppState, AppContextValue, Transaction, Category, CategorizationRule, Preferences, CategoryPattern } from '../types';
 import { StorageManager } from '../lib/storage/manager';
 import { parseFiles } from '../lib/parsers';
 import { CategorizationEngine } from '../lib/categorization/engine';
@@ -26,10 +26,15 @@ type AppAction =
   | { type: 'CATEGORIZE_TRANSACTION'; payload: { id: string; categoryId: string } }
   | { type: 'TOGGLE_EXCLUSION'; payload: string }
   | { type: 'ADD_CATEGORY'; payload: Category }
+  | { type: 'UPDATE_CATEGORY'; payload: Category }
   | { type: 'DELETE_CATEGORY'; payload: string }
   | { type: 'ADD_RULE'; payload: CategorizationRule }
   | { type: 'DELETE_RULE'; payload: string }
   | { type: 'UPDATE_RULE'; payload: CategorizationRule }
+  | { type: 'ADD_PATTERN'; payload: { categoryId: string; pattern: CategoryPattern } }
+  | { type: 'UPDATE_PATTERN'; payload: { categoryId: string; pattern: CategoryPattern } }
+  | { type: 'DELETE_PATTERN'; payload: { categoryId: string; patternId: string } }
+  | { type: 'REORDER_PATTERNS'; payload: { categoryId: string; patterns: CategoryPattern[] } }
   | { type: 'IMPORT_PREFERENCES'; payload: Preferences }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'ADD_ERROR'; payload: string }
@@ -104,6 +109,20 @@ function appReducer(state: AppState, action: AppAction): AppState {
         }
       };
 
+    case 'UPDATE_CATEGORY': {
+      const updatedCategories = state.categories.map(c =>
+        c.id === action.payload.id ? action.payload : c
+      );
+      return {
+        ...state,
+        categories: updatedCategories,
+        preferences: {
+          ...state.preferences,
+          categories: updatedCategories
+        }
+      };
+    }
+
     case 'DELETE_CATEGORY':
       return {
         ...state,
@@ -113,6 +132,75 @@ function appReducer(state: AppState, action: AppAction): AppState {
           categories: state.preferences.categories.filter(c => c.id !== action.payload)
         }
       };
+
+    case 'ADD_PATTERN': {
+      const updatedCategoriesAdd = state.categories.map(c =>
+        c.id === action.payload.categoryId
+          ? { ...c, patterns: [...c.patterns, action.payload.pattern] }
+          : c
+      );
+      return {
+        ...state,
+        categories: updatedCategoriesAdd,
+        preferences: {
+          ...state.preferences,
+          categories: updatedCategoriesAdd
+        }
+      };
+    }
+
+    case 'UPDATE_PATTERN': {
+      const updatedCategoriesUpdate = state.categories.map(c =>
+        c.id === action.payload.categoryId
+          ? {
+              ...c,
+              patterns: c.patterns.map(p =>
+                p.id === action.payload.pattern.id ? action.payload.pattern : p
+              )
+            }
+          : c
+      );
+      return {
+        ...state,
+        categories: updatedCategoriesUpdate,
+        preferences: {
+          ...state.preferences,
+          categories: updatedCategoriesUpdate
+        }
+      };
+    }
+
+    case 'DELETE_PATTERN': {
+      const updatedCategoriesDelete = state.categories.map(c =>
+        c.id === action.payload.categoryId
+          ? { ...c, patterns: c.patterns.filter(p => p.id !== action.payload.patternId) }
+          : c
+      );
+      return {
+        ...state,
+        categories: updatedCategoriesDelete,
+        preferences: {
+          ...state.preferences,
+          categories: updatedCategoriesDelete
+        }
+      };
+    }
+
+    case 'REORDER_PATTERNS': {
+      const updatedCategoriesReorder = state.categories.map(c =>
+        c.id === action.payload.categoryId
+          ? { ...c, patterns: action.payload.patterns }
+          : c
+      );
+      return {
+        ...state,
+        categories: updatedCategoriesReorder,
+        preferences: {
+          ...state.preferences,
+          categories: updatedCategoriesReorder
+        }
+      };
+    }
 
     case 'ADD_RULE':
       return {
@@ -276,8 +364,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'ADD_CATEGORY', payload: category });
     },
 
+    updateCategory: (category: Category) => {
+      dispatch({ type: 'UPDATE_CATEGORY', payload: category });
+    },
+
     deleteCategory: (categoryId: string) => {
       dispatch({ type: 'DELETE_CATEGORY', payload: categoryId });
+    },
+
+    addPatternToCategory: (categoryId: string, pattern: CategoryPattern) => {
+      dispatch({ type: 'ADD_PATTERN', payload: { categoryId, pattern } });
+    },
+
+    updatePattern: (categoryId: string, pattern: CategoryPattern) => {
+      dispatch({ type: 'UPDATE_PATTERN', payload: { categoryId, pattern } });
+    },
+
+    deletePattern: (categoryId: string, patternId: string) => {
+      dispatch({ type: 'DELETE_PATTERN', payload: { categoryId, patternId } });
+    },
+
+    reorderPatterns: (categoryId: string, patterns: CategoryPattern[]) => {
+      dispatch({ type: 'REORDER_PATTERNS', payload: { categoryId, patterns } });
     },
 
     addRule: (rule: CategorizationRule) => {

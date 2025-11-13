@@ -2,6 +2,8 @@
 
 A privacy-focused, offline-first personal finance web application that runs entirely in your browser. Track expenses, categorize transactions, and analyze spending patterns without ever sending your financial data to a server.
 
+**[🚀 Try it now on GitHub Pages](https://hansenrl.github.io/claude_finances/)**
+
 ## What is This?
 
 This repository contains a single-page web application (SPA) that helps you:
