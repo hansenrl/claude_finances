@@ -5,7 +5,7 @@ import type { CategoryPattern } from '../types';
 
 export function Settings() {
   const { state, actions } = useApp();
-  const [activeTab, setActiveTab] = useState<'categories' | 'data'>('categories');
+  const [activeTab, setActiveTab] = useState<'categories' | 'mappings' | 'data'>('categories');
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -43,6 +43,15 @@ export function Settings() {
             }`}
           >
             Categories & Patterns
+          </button>
+          <button
+            onClick={() => setActiveTab('mappings')}
+            className={`pb-2 px-1 ${activeTab === 'mappings'
+              ? 'border-b-2 border-blue-500 font-semibold'
+              : 'text-gray-500'
+            }`}
+          >
+            Description Mappings
           </button>
           <button
             onClick={() => setActiveTab('data')}
@@ -84,6 +93,73 @@ export function Settings() {
           <div className="mt-6">
             <NewCategoryForm onAdd={actions.addCategory} />
           </div>
+        </div>
+      )}
+
+      {/* Description Mappings Tab */}
+      {activeTab === 'mappings' && (
+        <div>
+          <div className="mb-4">
+            <h3 className="font-semibold mb-2">Description-Based Categorization</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              When you categorize a transaction, all transactions with the same description are automatically categorized the same way.
+              Below are your current description mappings.
+            </p>
+          </div>
+
+          {state.descriptionMappings.size === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <p>No description mappings yet.</p>
+              <p className="text-sm mt-2">Categorize a transaction to create your first mapping.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between mb-3 text-sm font-medium text-gray-600">
+                <span>Description</span>
+                <span>Category</span>
+              </div>
+              {Array.from(state.descriptionMappings.entries())
+                .sort((a, b) => a[0].localeCompare(b[0]))
+                .map(([description, categoryId]) => {
+                  const category = state.categories.find(c => c.id === categoryId);
+                  const matchingTransactions = state.transactions.filter(t => t.description === description);
+
+                  return (
+                    <div key={description} className="border rounded p-3 bg-white flex items-center justify-between">
+                      <div className="flex-1 min-w-0 mr-4">
+                        <div className="font-mono text-sm text-gray-800 truncate">
+                          {description}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {matchingTransactions.length} transaction{matchingTransactions.length !== 1 ? 's' : ''}
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-3 flex-shrink-0">
+                        {category && (
+                          <div className="flex items-center">
+                            <span
+                              className="inline-block w-3 h-3 rounded-full mr-2"
+                              style={{ backgroundColor: category.color }}
+                            />
+                            <span className="text-sm font-medium">{category.name}</span>
+                          </div>
+                        )}
+                        <button
+                          onClick={() => {
+                            if (confirm(`Delete mapping for "${description}"?\n\nThis will not affect existing categorizations, but future imports won't auto-categorize.`)) {
+                              actions.deleteDescriptionMapping(description);
+                            }
+                          }}
+                          className="text-red-600 hover:text-red-800 text-sm px-2 py-1"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
         </div>
       )}
 

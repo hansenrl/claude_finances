@@ -9,13 +9,21 @@ interface PatternMatch {
 export class CategorizationEngine {
   constructor(
     private categories: Category[],
-    private rules: CategorizationRule[]
+    private rules: CategorizationRule[],
+    private descriptionMappings: Map<string, string> = new Map()
   ) {}
 
   /**
-   * Categorize a single transaction based on category patterns
+   * Categorize a single transaction based on description mappings and patterns
+   * Priority: 1) Description mapping, 2) Pattern matching, 3) Uncategorized
    */
   categorize(transaction: Transaction): string | undefined {
+    // Check description mapping first (exact match)
+    const mappedCategoryId = this.descriptionMappings.get(transaction.description);
+    if (mappedCategoryId) {
+      return mappedCategoryId;
+    }
+
     // Collect all enabled patterns from all categories
     const allPatterns: Array<PatternMatch & { pattern: CategoryPattern }> = [];
 

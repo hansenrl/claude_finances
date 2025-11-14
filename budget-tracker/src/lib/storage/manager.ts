@@ -7,6 +7,7 @@ const STORAGE_KEYS = {
   PREFERENCES: 'budget_tracker_preferences',
   EXCLUDED_IDS: 'budget_tracker_excluded_ids',
   MANUAL_OVERRIDES: 'budget_tracker_manual_overrides',
+  DESCRIPTION_MAPPINGS: 'budget_tracker_description_mappings',
   VERSION: 'budget_tracker_version'
 } as const;
 
@@ -141,6 +142,34 @@ export class StorageManager {
   }
 
   /**
+   * Save description mappings
+   */
+  saveDescriptionMappings(mappings: Map<string, string>): void {
+    try {
+      const obj = Object.fromEntries(mappings);
+      localStorage.setItem(STORAGE_KEYS.DESCRIPTION_MAPPINGS, JSON.stringify(obj));
+    } catch (e) {
+      console.error('Error saving description mappings:', e);
+    }
+  }
+
+  /**
+   * Load description mappings
+   */
+  loadDescriptionMappings(): Map<string, string> {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.DESCRIPTION_MAPPINGS);
+      if (!data) return new Map();
+
+      const parsed = JSON.parse(data);
+      return new Map(Object.entries(parsed));
+    } catch (error) {
+      console.error('Error loading description mappings:', error);
+      return new Map();
+    }
+  }
+
+  /**
    * Export preferences as JSON blob
    */
   exportPreferences(preferences: Preferences): void {
@@ -157,13 +186,15 @@ export class StorageManager {
     transactions: Transaction[],
     preferences: Preferences,
     excludedIds: Set<string>,
-    manualOverrides: Map<string, string>
+    manualOverrides: Map<string, string>,
+    descriptionMappings: Map<string, string>
   ): void {
     const data = {
       transactions,
       preferences,
       excludedIds: Array.from(excludedIds),
       manualOverrides: Object.fromEntries(manualOverrides),
+      descriptionMappings: Object.fromEntries(descriptionMappings),
       exportedAt: new Date(),
       version: CURRENT_VERSION
     };
