@@ -2,6 +2,8 @@
 
 A single-page web application for personal financial budget tracking that runs entirely in your browser with no backend required. All data is stored locally on your device for complete privacy.
 
+**[🚀 Try it now on GitHub Pages](https://hansenrl.github.io/claude_finances/)**
+
 ## Features
 
 - **Multi-Format File Import**: Upload QFX (Chase, Fidelity) and CSV (Discover) files
