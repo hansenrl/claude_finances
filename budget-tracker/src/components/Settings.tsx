@@ -1,13 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { generateId } from '../lib/utils';
 import type { CategoryPattern } from '../types';
 
 export function Settings() {
   const { state, actions } = useApp();
-  const [activeTab, setActiveTab] = useState<'categories' | 'mappings' | 'data'>('categories');
+  const [activeTab, setActiveTab] = useState<'categories' | 'mappings'>('categories');
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const toggleCategory = (categoryId: string) => {
     setExpandedCategories(prev => {
@@ -19,13 +18,6 @@ export function Settings() {
       }
       return next;
     });
-  };
-
-  const handleImportPreferences = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      actions.importPreferences(file);
-    }
   };
 
   return (
@@ -52,15 +44,6 @@ export function Settings() {
             }`}
           >
             Description Mappings
-          </button>
-          <button
-            onClick={() => setActiveTab('data')}
-            className={`pb-2 px-1 ${activeTab === 'data'
-              ? 'border-b-2 border-blue-500 font-semibold'
-              : 'text-gray-500'
-            }`}
-          >
-            Data Management
           </button>
         </div>
       </div>
@@ -160,93 +143,6 @@ export function Settings() {
                 })}
             </div>
           )}
-        </div>
-      )}
-
-      {/* Data Management Tab */}
-      {activeTab === 'data' && (
-        <div className="space-y-4">
-          <div>
-            <h3 className="font-semibold mb-3">Export</h3>
-            <div className="space-y-2">
-              <button
-                onClick={actions.exportPreferences}
-                className="w-full md:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                Export Preferences
-              </button>
-              <button
-                onClick={actions.exportData}
-                className="w-full md:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 ml-0 md:ml-2"
-              >
-                Export All Data
-              </button>
-            </div>
-            <p className="text-sm text-gray-600 mt-2">
-              Export your categories, patterns, rules, and settings to a JSON file.
-            </p>
-          </div>
-
-          <div>
-            <h3 className="font-semibold mb-3">Import</h3>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".json"
-              onChange={handleImportPreferences}
-              className="hidden"
-            />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-            >
-              Import Preferences
-            </button>
-            <p className="text-sm text-gray-600 mt-2">
-              Import previously exported preferences.
-            </p>
-          </div>
-
-          <div className="border-t pt-4">
-            <h3 className="font-semibold mb-3">Sample Data</h3>
-            <button
-              onClick={actions.loadSampleData}
-              className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
-            >
-              Load Sample Data
-            </button>
-            <p className="text-sm text-gray-600 mt-2">
-              Load ~200 sample transactions throughout 2025 for testing. Includes monthly subscriptions and various expense categories.
-            </p>
-          </div>
-
-          <div className="border-t pt-4">
-            <h3 className="font-semibold mb-3 text-red-600">Danger Zone</h3>
-            <div className="space-y-4">
-              <div>
-                <button
-                  onClick={actions.clearTransactions}
-                  className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700"
-                >
-                  Clear Transactions Only
-                </button>
-                <p className="text-sm text-gray-600 mt-2">
-                  Delete all transactions but keep your categories, patterns, and description mappings.
-                </p>
-              </div>
-              <div>
-                <button
-                  onClick={actions.clearAllData}
-                  className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-                >
-                  Clear All Data
-                </button>
-                <p className="text-sm text-gray-600 mt-2">
-                  This will delete all transactions, preferences, and settings. This cannot be undone.
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
       )}
     </div>

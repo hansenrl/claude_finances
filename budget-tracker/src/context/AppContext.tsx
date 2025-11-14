@@ -6,6 +6,7 @@ import { parseFiles } from '../lib/parsers';
 import { CategorizationEngine } from '../lib/categorization/engine';
 import { getDefaultPreferences } from '../lib/defaults';
 import { generateSampleData } from '../lib/sampleData';
+import { generateTransactionSignatureSync } from '../lib/utils';
 
 // Initial state
 const initialState: AppState = {
@@ -23,7 +24,7 @@ const initialState: AppState = {
 
 // Action types
 type AppAction =
-  | { type: 'LOAD_DATA'; payload: { transactions: Transaction[]; preferences: Preferences; excludedIds: Set<string>; excludedRepeatedExpenses: Set<string>; manualOverrides: Map<string, string>; descriptionMappings: Map<string, string> } }
+  | { type: 'LOAD_DATA'; payload: { transactions: Transaction[]; preferences: Preferences; manualOverrides: Map<string, string>; descriptionMappings: Map<string, string> } }
   | { type: 'ADD_TRANSACTIONS'; payload: { transactions: Transaction[]; errors: string[] } }
   | { type: 'CATEGORIZE_TRANSACTION'; payload: { id: string; categoryId: string; description: string } }
   | { type: 'TOGGLE_EXCLUSION'; payload: string }
@@ -49,28 +50,68 @@ type AppAction =
 // Reducer
 function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
-    case 'LOAD_DATA':
+    case 'LOAD_DATA': {
+      // Build sets from signature-based exclusions
+      const signatureSet = new Set(action.payload.preferences.excludedTransactionSignatures || []);
+      const patternSet = new Set(action.payload.preferences.excludedRepeatedExpensePatterns || []);
+
+      // Apply exclusions to transactions based on signatures
+      const excludedIdsFromSignatures = new Set<string>();
+      const transactionsWithExclusions = action.payload.transactions.map(t => {
+        const signature = generateTransactionSignatureSync(t.date, t.amount, t.description);
+        const isExcluded = signatureSet.has(signature);
+
+        if (isExcluded) {
+          excludedIdsFromSignatures.add(t.id);
+        }
+
+        return {
+          ...t,
+          isExcluded
+        };
+      });
+
       return {
         ...state,
-        transactions: action.payload.transactions,
+        transactions: transactionsWithExclusions,
         preferences: action.payload.preferences,
         categories: action.payload.preferences.categories,
         rules: action.payload.preferences.rules,
-        excludedIds: action.payload.excludedIds,
-        excludedRepeatedExpenses: action.payload.excludedRepeatedExpenses,
+        excludedIds: excludedIdsFromSignatures,
+        excludedRepeatedExpenses: patternSet,
         manualOverrides: action.payload.manualOverrides,
         descriptionMappings: action.payload.descriptionMappings,
         isLoading: false
       };
+    }
 
     case 'ADD_TRANSACTIONS': {
       // Deduplicate transactions by ID
       const existingIds = new Set(state.transactions.map(t => t.id));
       const newTransactions = action.payload.transactions.filter(t => !existingIds.has(t.id));
 
+      // Apply exclusions based on signatures
+      const signatureSet = new Set(state.preferences.excludedTransactionSignatures || []);
+      const nextExcludedIds = new Set(state.excludedIds);
+
+      const transactionsWithExclusions = newTransactions.map(t => {
+        const signature = generateTransactionSignatureSync(t.date, t.amount, t.description);
+        const isExcluded = signatureSet.has(signature);
+
+        if (isExcluded) {
+          nextExcludedIds.add(t.id);
+        }
+
+        return {
+          ...t,
+          isExcluded
+        };
+      });
+
       return {
         ...state,
-        transactions: [...state.transactions, ...newTransactions],
+        transactions: [...state.transactions, ...transactionsWithExclusions],
+        excludedIds: nextExcludedIds,
         errors: action.payload.errors
       };
     }
@@ -100,7 +141,35 @@ function appReducer(state: AppState, action: AppAction): AppState {
       };
     }
 
-    case 'TOGGLE_EXCLUSION':
+    case 'TOGGLE_EXCLUSION': {
+      const transaction = state.transactions.find(t => t.id === action.payload);
+      if (!transaction) return state;
+
+      // Generate signature for this transaction
+      const signature = generateTransactionSignatureSync(
+        transaction.date,
+        transaction.amount,
+        transaction.description
+      );
+
+      // Update exclusion signatures in preferences
+      const nextSignatures = [...state.preferences.excludedTransactionSignatures];
+      const signatureIndex = nextSignatures.indexOf(signature);
+
+      if (signatureIndex >= 0) {
+        nextSignatures.splice(signatureIndex, 1);
+      } else {
+        nextSignatures.push(signature);
+      }
+
+      // Update runtime excludedIds set
+      const nextExcludedIds = new Set(state.excludedIds);
+      if (nextExcludedIds.has(action.payload)) {
+        nextExcludedIds.delete(action.payload);
+      } else {
+        nextExcludedIds.add(action.payload);
+      }
+
       return {
         ...state,
         transactions: state.transactions.map(t =>
@@ -108,14 +177,13 @@ function appReducer(state: AppState, action: AppAction): AppState {
             ? { ...t, isExcluded: !t.isExcluded }
             : t
         ),
-        excludedIds: (() => {
-          const next = new Set(state.excludedIds);
-          next.has(action.payload)
-            ? next.delete(action.payload)
-            : next.add(action.payload);
-          return next;
-        })()
+        excludedIds: nextExcludedIds,
+        preferences: {
+          ...state.preferences,
+          excludedTransactionSignatures: nextSignatures
+        }
       };
+    }
 
     case 'TOGGLE_REPEATED_EXPENSE_EXCLUSION': {
       const { merchantPattern, transactionIds } = action.payload;
@@ -129,13 +197,47 @@ function appReducer(state: AppState, action: AppAction): AppState {
         nextExcludedRepeated.add(merchantPattern);
       }
 
+      // Update exclusion patterns in preferences
+      const nextPatterns = [...state.preferences.excludedRepeatedExpensePatterns];
+      const patternIndex = nextPatterns.indexOf(merchantPattern);
+
+      if (isCurrentlyExcluded) {
+        if (patternIndex >= 0) {
+          nextPatterns.splice(patternIndex, 1);
+        }
+      } else {
+        if (patternIndex < 0) {
+          nextPatterns.push(merchantPattern);
+        }
+      }
+
       // Toggle all transactions in this repeated expense group
       const nextExcludedIds = new Set(state.excludedIds);
-      transactionIds.forEach(id => {
+      const affectedTransactions = state.transactions.filter(t => transactionIds.includes(t.id));
+
+      // Update signatures for all affected transactions
+      const nextSignatures = [...state.preferences.excludedTransactionSignatures];
+
+      affectedTransactions.forEach(transaction => {
+        const signature = generateTransactionSignatureSync(
+          transaction.date,
+          transaction.amount,
+          transaction.description
+        );
+        const sigIndex = nextSignatures.indexOf(signature);
+
         if (isCurrentlyExcluded) {
-          nextExcludedIds.delete(id);
+          // Remove signature and ID
+          if (sigIndex >= 0) {
+            nextSignatures.splice(sigIndex, 1);
+          }
+          nextExcludedIds.delete(transaction.id);
         } else {
-          nextExcludedIds.add(id);
+          // Add signature and ID
+          if (sigIndex < 0) {
+            nextSignatures.push(signature);
+          }
+          nextExcludedIds.add(transaction.id);
         }
       });
 
@@ -150,7 +252,12 @@ function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         transactions: updatedTransactions,
         excludedIds: nextExcludedIds,
-        excludedRepeatedExpenses: nextExcludedRepeated
+        excludedRepeatedExpenses: nextExcludedRepeated,
+        preferences: {
+          ...state.preferences,
+          excludedTransactionSignatures: nextSignatures,
+          excludedRepeatedExpensePatterns: nextPatterns
+        }
       };
     }
 
@@ -314,12 +421,14 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, errors: [] };
 
     case 'CLEAR_TRANSACTIONS':
+      // Clear transactions and runtime state, but preserve exclusion signatures in preferences
       return {
         ...state,
         transactions: [],
         excludedIds: new Set(),
         excludedRepeatedExpenses: new Set(),
         manualOverrides: new Map()
+        // Note: preferences.excludedTransactionSignatures and excludedRepeatedExpensePatterns are preserved
       };
 
     case 'CLEAR_ALL':
@@ -343,22 +452,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const transactions = storage.loadTransactions();
     const preferences = storage.loadPreferences() || getDefaultPreferences();
-    const excludedIds = storage.loadExcludedIds();
-    const excludedRepeatedExpenses = storage.loadExcludedRepeatedExpenses();
     const manualOverrides = storage.loadManualOverrides();
     const descriptionMappings = storage.loadDescriptionMappings();
 
-    // Apply exclusions and manual overrides to loaded transactions
+    // Apply manual overrides to loaded transactions (exclusions are handled by LOAD_DATA based on signatures)
     const updatedTransactions = transactions.map(t => ({
       ...t,
-      isExcluded: excludedIds.has(t.id),
       categoryId: manualOverrides.get(t.id) || t.categoryId,
       isManuallyCategorized: manualOverrides.has(t.id)
     }));
 
     dispatch({
       type: 'LOAD_DATA',
-      payload: { transactions: updatedTransactions, preferences, excludedIds, excludedRepeatedExpenses, manualOverrides, descriptionMappings }
+      payload: { transactions: updatedTransactions, preferences, manualOverrides, descriptionMappings }
     });
 
     // Mark initial load as complete after state update
@@ -396,33 +502,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [state.preferences, storage]);
 
-  // Save excluded IDs when they change (but skip initial load)
-  useEffect(() => {
-    if (isInitialLoadRef.current) return;
-
-    try {
-      storage.saveExcludedIds(state.excludedIds);
-    } catch (error) {
-      dispatch({
-        type: 'ADD_ERROR',
-        payload: error instanceof Error ? error.message : 'Failed to save excluded IDs'
-      });
-    }
-  }, [state.excludedIds, storage]);
-
-  // Save excluded repeated expenses when they change (but skip initial load)
-  useEffect(() => {
-    if (isInitialLoadRef.current) return;
-
-    try {
-      storage.saveExcludedRepeatedExpenses(state.excludedRepeatedExpenses);
-    } catch (error) {
-      dispatch({
-        type: 'ADD_ERROR',
-        payload: error instanceof Error ? error.message : 'Failed to save excluded repeated expenses'
-      });
-    }
-  }, [state.excludedRepeatedExpenses, storage]);
+  // Note: Exclusion state (excludedIds and excludedRepeatedExpenses) is now stored in preferences
+  // as signature-based exclusions, so we don't need separate save hooks for them.
+  // They are automatically saved when preferences are saved.
 
   // Save manual overrides when they change (but skip initial load)
   useEffect(() => {

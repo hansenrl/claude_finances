@@ -185,6 +185,8 @@ export function getDefaultPreferences() {
   return {
     categories: DEFAULT_CATEGORIES,
     rules: DEFAULT_RULES,
+    excludedTransactionSignatures: [],
+    excludedRepeatedExpensePatterns: [],
     version: 1,
     lastModified: new Date(),
   };

@@ -1,0 +1,196 @@
+import React, { useRef, useCallback, useState } from 'react';
+import { useApp } from '../context/AppContext';
+
+export function DataManagement() {
+  const { state, actions } = useApp();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      actions.uploadFiles(files);
+    }
+  }, [actions]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      actions.uploadFiles(files);
+    }
+  }, [actions]);
+
+  const handleImportPreferences = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      actions.importPreferences(file);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* File Upload Section */}
+      <div className="bg-white p-6 rounded-lg shadow">
+        <h2 className="text-xl font-semibold mb-4">Upload Transactions</h2>
+
+        <div
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          className={`
+            border-2 border-dashed rounded-lg p-8 text-center
+            transition-colors cursor-pointer
+            ${isDragging
+              ? 'border-blue-500 bg-blue-50'
+              : 'border-gray-300 hover:border-gray-400'
+            }
+          `}
+        >
+          <input
+            type="file"
+            id="file-upload"
+            className="hidden"
+            accept=".qfx,.csv"
+            multiple
+            onChange={handleFileInput}
+            disabled={state.isLoading}
+          />
+          <label
+            htmlFor="file-upload"
+            className="cursor-pointer"
+          >
+            <div className="text-4xl mb-2">📁</div>
+            <p className="text-lg font-medium text-gray-700">
+              {state.isLoading ? 'Processing files...' : 'Drag & drop files here'}
+            </p>
+            <p className="text-sm text-gray-500 mt-1">
+              or click to select files
+            </p>
+            <p className="text-xs text-gray-400 mt-2">
+              Supports .qfx and .csv files
+            </p>
+          </label>
+        </div>
+
+        {state.errors.length > 0 && (
+          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded">
+            <h3 className="font-semibold text-red-800 mb-2">Errors:</h3>
+            <ul className="text-sm text-red-700 space-y-1">
+              {state.errors.map((error, i) => (
+                <li key={i}>• {error}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {state.transactions.length > 0 && (
+          <div className="mt-4 text-sm text-gray-600">
+            <p>Loaded {state.transactions.length} transactions</p>
+          </div>
+        )}
+      </div>
+
+      {/* Data Management Section */}
+      <div className="bg-white p-6 rounded-lg shadow">
+        <h2 className="text-xl font-semibold mb-4">Data Management</h2>
+
+        <div className="space-y-4">
+          <div>
+            <h3 className="font-semibold mb-3">Export</h3>
+            <div className="space-y-2">
+              <button
+                onClick={actions.exportPreferences}
+                className="w-full md:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Export Preferences
+              </button>
+              <button
+                onClick={actions.exportData}
+                className="w-full md:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 ml-0 md:ml-2"
+              >
+                Export All Data
+              </button>
+            </div>
+            <p className="text-sm text-gray-600 mt-2">
+              Export your categories, patterns, rules, and settings to a JSON file.
+            </p>
+          </div>
+
+          <div>
+            <h3 className="font-semibold mb-3">Import</h3>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              onChange={handleImportPreferences}
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+            >
+              Import Preferences
+            </button>
+            <p className="text-sm text-gray-600 mt-2">
+              Import previously exported preferences.
+            </p>
+          </div>
+
+          <div className="border-t pt-4">
+            <h3 className="font-semibold mb-3">Sample Data</h3>
+            <button
+              onClick={actions.loadSampleData}
+              className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
+            >
+              Load Sample Data
+            </button>
+            <p className="text-sm text-gray-600 mt-2">
+              Load ~200 sample transactions throughout 2025 for testing. Includes monthly subscriptions and various expense categories.
+            </p>
+          </div>
+
+          <div className="border-t pt-4">
+            <h3 className="font-semibold mb-3 text-red-600">Danger Zone</h3>
+            <div className="space-y-4">
+              <div>
+                <button
+                  onClick={actions.clearTransactions}
+                  className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700"
+                >
+                  Clear Transactions Only
+                </button>
+                <p className="text-sm text-gray-600 mt-2">
+                  Delete all transactions but keep your categories, patterns, and description mappings.
+                </p>
+              </div>
+              <div>
+                <button
+                  onClick={actions.clearAllData}
+                  className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                >
+                  Clear All Data
+                </button>
+                <p className="text-sm text-gray-600 mt-2">
+                  This will delete all transactions, preferences, and settings. This cannot be undone.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

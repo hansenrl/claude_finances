@@ -76,6 +76,14 @@ export class StorageManager {
 
       const parsed = JSON.parse(data, this.dateReviver);
 
+      // Ensure new fields exist with default values (for backwards compatibility)
+      if (!parsed.excludedTransactionSignatures) {
+        parsed.excludedTransactionSignatures = [];
+      }
+      if (!parsed.excludedRepeatedExpensePatterns) {
+        parsed.excludedRepeatedExpensePatterns = [];
+      }
+
       // Handle version migrations
       if (parsed.version !== CURRENT_VERSION) {
         return this.migratePreferences(parsed);
@@ -280,11 +288,13 @@ export class StorageManager {
 
   /**
    * Clear only transaction data from localStorage
+   * Note: Exclusion signatures are now stored in preferences, so they persist across transaction clearing
    */
   clearTransactions(): void {
     localStorage.removeItem(STORAGE_KEYS.TRANSACTIONS);
-    localStorage.removeItem(STORAGE_KEYS.EXCLUDED_IDS);
     localStorage.removeItem(STORAGE_KEYS.MANUAL_OVERRIDES);
+    // Note: EXCLUDED_IDS and EXCLUDED_REPEATED_EXPENSES are now stored in preferences
+    // We keep the old keys for backwards compatibility but don't clear them here
   }
 
   /**
@@ -368,6 +378,7 @@ export class StorageManager {
       Array.isArray(data.rules) &&
       data.categories.every((c: any) => c.id && c.name && c.color) &&
       data.rules.every((r: any) => r.id && r.categoryId && r.pattern !== undefined)
+      // excludedTransactionSignatures and excludedRepeatedExpensePatterns are optional for backwards compatibility
     );
   }
 }

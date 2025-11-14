@@ -31,6 +31,54 @@ export async function generateTransactionId(
   return Math.abs(hash).toString(36);
 }
 
+// Generate a transaction signature for exclusion tracking (based on date, description, amount only)
+// This allows exclusions to persist across data clearing and re-importing
+export async function generateTransactionSignature(
+  date: Date,
+  amount: number,
+  description: string
+): Promise<string> {
+  const key = `${date.toISOString()}_${amount}_${description}`;
+
+  // Use crypto API if available (modern browsers)
+  if (typeof crypto !== 'undefined' && crypto.subtle) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(key);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  // Fallback to simple hash
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    const char = key.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash).toString(36);
+}
+
+// Synchronous version of transaction signature generation (uses simple hash only)
+// This is used in the reducer for immediate signature computation
+export function generateTransactionSignatureSync(
+  date: Date | string,
+  amount: number,
+  description: string
+): string {
+  // Handle both Date objects and date strings
+  const dateStr = date instanceof Date ? date.toISOString() : new Date(date).toISOString();
+  const key = `${dateStr}_${amount}_${description}`;
+
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    const char = key.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash).toString(36);
+}
+
 // Format currency
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-US', {

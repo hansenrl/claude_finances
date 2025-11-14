@@ -48,6 +48,8 @@ export interface CategorizationRule {
 export interface Preferences {
   categories: Category[];
   rules: CategorizationRule[];
+  excludedTransactionSignatures: string[]; // Signatures of excluded transactions (persist across data clearing)
+  excludedRepeatedExpensePatterns: string[]; // Merchant patterns of excluded repeated expenses
   version: number; // Schema version
   lastModified: Date;
 }
