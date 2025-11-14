@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, useEffect, useMemo } from 'react';
+import { createContext, useContext, useReducer, useEffect, useMemo, useRef } from 'react';
 import type { ReactNode } from 'react';
 import type { AppState, AppContextValue, Transaction, Category, CategorizationRule, Preferences, CategoryPattern } from '../types';
 import { StorageManager } from '../lib/storage/manager';
@@ -337,6 +337,7 @@ const AppContext = createContext<AppContextValue | null>(null);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
   const storage = useMemo(() => new StorageManager(), []);
+  const isInitialLoadRef = useRef(true);
 
   // Load data on mount
   useEffect(() => {
@@ -359,6 +360,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       type: 'LOAD_DATA',
       payload: { transactions: updatedTransactions, preferences, excludedIds, excludedRepeatedExpenses, manualOverrides, descriptionMappings }
     });
+
+    // Mark initial load as complete after state update
+    // Use setTimeout to ensure this runs after all save effects have checked the ref
+    setTimeout(() => {
+      isInitialLoadRef.current = false;
+    }, 0);
   }, [storage]);
 
   // Save transactions when they change
@@ -375,8 +382,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [state.transactions, storage]);
 
-  // Save preferences when they change
+  // Save preferences when they change (but skip initial load)
   useEffect(() => {
+    if (isInitialLoadRef.current) return;
+
     try {
       storage.savePreferences(state.preferences);
     } catch (error) {
@@ -387,8 +396,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [state.preferences, storage]);
 
-  // Save excluded IDs when they change
+  // Save excluded IDs when they change (but skip initial load)
   useEffect(() => {
+    if (isInitialLoadRef.current) return;
+
     try {
       storage.saveExcludedIds(state.excludedIds);
     } catch (error) {
@@ -399,8 +410,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [state.excludedIds, storage]);
 
-  // Save excluded repeated expenses when they change
+  // Save excluded repeated expenses when they change (but skip initial load)
   useEffect(() => {
+    if (isInitialLoadRef.current) return;
+
     try {
       storage.saveExcludedRepeatedExpenses(state.excludedRepeatedExpenses);
     } catch (error) {
@@ -411,8 +424,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [state.excludedRepeatedExpenses, storage]);
 
-  // Save manual overrides when they change
+  // Save manual overrides when they change (but skip initial load)
   useEffect(() => {
+    if (isInitialLoadRef.current) return;
+
     try {
       storage.saveManualOverrides(state.manualOverrides);
     } catch (error) {
@@ -423,8 +438,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [state.manualOverrides, storage]);
 
-  // Save description mappings when they change
+  // Save description mappings when they change (but skip initial load)
   useEffect(() => {
+    if (isInitialLoadRef.current) return;
+
     try {
       storage.saveDescriptionMappings(state.descriptionMappings);
     } catch (error) {
