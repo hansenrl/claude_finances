@@ -115,40 +115,42 @@ export function TransactionList() {
         </div>
       </div>
 
-      <div
-        ref={parentRef}
-        className="overflow-auto border rounded"
-        style={{ height: '600px' }}
-      >
-        <div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>
-          {/* Header */}
-          <div className="sticky top-0 bg-gray-100 border-b z-10 flex text-sm font-semibold">
-            <SortableHeader label="Date" field="date" currentField={sortField} direction={sortDirection} onSort={handleSort} width="120px" />
-            <SortableHeader label="Description" field="description" currentField={sortField} direction={sortDirection} onSort={handleSort} width="250px" />
-            <SortableHeader label="Amount" field="amount" currentField={sortField} direction={sortDirection} onSort={handleSort} width="120px" />
-            <SortableHeader label="Category" field="category" currentField={sortField} direction={sortDirection} onSort={handleSort} width="150px" />
-            <div className="p-2 border-r" style={{ width: '200px' }}>Source</div>
-            <div className="p-2 border-r w-24 text-center">Exclude</div>
-          </div>
+      <div className="border rounded overflow-hidden">
+        {/* Header - Fixed outside of scroll container */}
+        <div className="bg-gray-100 border-b flex text-sm font-semibold">
+          <SortableHeader label="Date" field="date" currentField={sortField} direction={sortDirection} onSort={handleSort} width="120px" />
+          <SortableHeader label="Description" field="description" currentField={sortField} direction={sortDirection} onSort={handleSort} width="250px" />
+          <SortableHeader label="Amount" field="amount" currentField={sortField} direction={sortDirection} onSort={handleSort} width="120px" />
+          <SortableHeader label="Category" field="category" currentField={sortField} direction={sortDirection} onSort={handleSort} width="150px" />
+          <div className="p-2 border-r" style={{ width: '200px' }}>Source</div>
+          <div className="p-2 border-r w-24 text-center">Exclude</div>
+        </div>
 
-          {/* Rows */}
-          {virtualizer.getVirtualItems().map((virtualRow) => {
-            const transaction = filteredAndSortedTransactions[virtualRow.index];
-            const category = state.categories.find(c => c.id === transaction.categoryId);
+        {/* Scrollable content area */}
+        <div
+          ref={parentRef}
+          className="overflow-auto"
+          style={{ height: '560px' }}
+        >
+          <div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>
+            {/* Rows */}
+            {virtualizer.getVirtualItems().map((virtualRow) => {
+              const transaction = filteredAndSortedTransactions[virtualRow.index];
+              const category = state.categories.find(c => c.id === transaction.categoryId);
 
-            return (
-              <div
-                key={transaction.id}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: `${virtualRow.size}px`,
-                  transform: `translateY(${virtualRow.start}px)`,
-                }}
-                className={`flex text-sm border-b ${transaction.isExcluded ? 'bg-gray-100 opacity-50' : ''}`}
-              >
+              return (
+                <div
+                  key={transaction.id}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: `${virtualRow.size}px`,
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                  className={`flex text-sm border-b ${transaction.isExcluded ? 'bg-gray-100 opacity-50' : ''}`}
+                >
                 <div className="p-2 border-r" style={{ width: '120px' }}>
                   {formatDate(transaction.date)}
                 </div>
@@ -186,6 +188,7 @@ export function TransactionList() {
               </div>
             );
           })}
+          </div>
         </div>
       </div>
     </div>
