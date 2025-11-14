@@ -11,12 +11,23 @@ export function TransactionList() {
   const { state, actions } = useApp();
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const parentRef = React.useRef<HTMLDivElement>(null);
 
-  // Sort transactions
-  const sortedTransactions = useMemo(() => {
-    const sorted = [...state.transactions].sort((a, b) => {
+  // Filter and sort transactions
+  const filteredAndSortedTransactions = useMemo(() => {
+    // First, filter by search query
+    let filtered = state.transactions;
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = state.transactions.filter(t =>
+        t.description.toLowerCase().includes(query)
+      );
+    }
+
+    // Then, sort the filtered results
+    const sorted = [...filtered].sort((a, b) => {
       let comparison = 0;
 
       switch (sortField) {
@@ -42,10 +53,10 @@ export function TransactionList() {
     });
 
     return sorted;
-  }, [state.transactions, state.categories, sortField, sortDirection]);
+  }, [state.transactions, state.categories, sortField, sortDirection, searchQuery]);
 
   const virtualizer = useVirtualizer({
-    count: sortedTransactions.length,
+    count: filteredAndSortedTransactions.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 50,
     overscan: 10,
@@ -71,9 +82,37 @@ export function TransactionList() {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow">
-      <h2 className="text-xl font-semibold mb-4">
-        Transactions ({sortedTransactions.length})
-      </h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold">
+          Transactions ({filteredAndSortedTransactions.length}
+          {searchQuery && state.transactions.length !== filteredAndSortedTransactions.length &&
+            ` of ${state.transactions.length}`})
+        </h2>
+
+        <div className="flex items-center space-x-2">
+          <label htmlFor="search-transactions" className="text-sm text-gray-600">
+            Search:
+          </label>
+          <input
+            id="search-transactions"
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Filter by description..."
+            className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            style={{ width: '300px' }}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="text-gray-400 hover:text-gray-600 text-sm px-2 py-1"
+              title="Clear search"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      </div>
 
       <div
         ref={parentRef}
@@ -93,7 +132,7 @@ export function TransactionList() {
 
           {/* Rows */}
           {virtualizer.getVirtualItems().map((virtualRow) => {
-            const transaction = sortedTransactions[virtualRow.index];
+            const transaction = filteredAndSortedTransactions[virtualRow.index];
             const category = state.categories.find(c => c.id === transaction.categoryId);
 
             return (
