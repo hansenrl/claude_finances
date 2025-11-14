@@ -102,8 +102,6 @@ export function MonthlyAnalysis() {
             <tr>
               <th className="p-2 text-left">Month</th>
               <th className="p-2 text-right">Expenses</th>
-              <th className="p-2 text-right">Income</th>
-              <th className="p-2 text-right">Net</th>
               <th className="p-2 text-right">Transactions</th>
             </tr>
           </thead>
@@ -112,10 +110,6 @@ export function MonthlyAnalysis() {
               <tr key={month.month} className="border-b">
                 <td className="p-2">{month.monthLabel}</td>
                 <td className="p-2 text-right text-red-600">{formatCurrency(Math.abs(month.totalDebits))}</td>
-                <td className="p-2 text-right text-green-600">{formatCurrency(month.totalCredits)}</td>
-                <td className={`p-2 text-right font-semibold ${month.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(month.net)}
-                </td>
                 <td className="p-2 text-right">{month.transactionCount}</td>
               </tr>
             ))}

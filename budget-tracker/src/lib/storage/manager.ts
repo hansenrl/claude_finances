@@ -58,9 +58,10 @@ export class StorageManager {
       localStorage.setItem(STORAGE_KEYS.PREFERENCES, JSON.stringify(data, this.dateReplacer));
     } catch (e) {
       if (this.isQuotaExceeded(e)) {
-        throw new Error('Storage quota exceeded.');
+        throw new Error('Storage quota exceeded. Unable to save preferences.');
       }
-      throw e;
+      console.error('Error saving preferences:', e);
+      throw new Error('Failed to save preferences. Please try again.');
     }
   }
 
@@ -94,6 +95,10 @@ export class StorageManager {
       localStorage.setItem(STORAGE_KEYS.EXCLUDED_IDS, JSON.stringify(Array.from(ids)));
     } catch (e) {
       console.error('Error saving excluded IDs:', e);
+      if (this.isQuotaExceeded(e)) {
+        throw new Error('Storage quota exceeded. Unable to save excluded IDs.');
+      }
+      throw new Error('Failed to save excluded IDs. Please try again.');
     }
   }
 
@@ -122,6 +127,10 @@ export class StorageManager {
       localStorage.setItem(STORAGE_KEYS.MANUAL_OVERRIDES, JSON.stringify(obj));
     } catch (e) {
       console.error('Error saving manual overrides:', e);
+      if (this.isQuotaExceeded(e)) {
+        throw new Error('Storage quota exceeded. Unable to save manual overrides.');
+      }
+      throw new Error('Failed to save manual overrides. Please try again.');
     }
   }
 
@@ -150,6 +159,10 @@ export class StorageManager {
       localStorage.setItem(STORAGE_KEYS.DESCRIPTION_MAPPINGS, JSON.stringify(obj));
     } catch (e) {
       console.error('Error saving description mappings:', e);
+      if (this.isQuotaExceeded(e)) {
+        throw new Error('Storage quota exceeded. Unable to save description mappings.');
+      }
+      throw new Error('Failed to save description mappings. Please try again.');
     }
   }
 
@@ -229,6 +242,15 @@ export class StorageManager {
       reader.onerror = () => reject(new Error('Error reading file'));
       reader.readAsText(file);
     });
+  }
+
+  /**
+   * Clear only transaction data from localStorage
+   */
+  clearTransactions(): void {
+    localStorage.removeItem(STORAGE_KEYS.TRANSACTIONS);
+    localStorage.removeItem(STORAGE_KEYS.EXCLUDED_IDS);
+    localStorage.removeItem(STORAGE_KEYS.MANUAL_OVERRIDES);
   }
 
   /**

@@ -31,14 +31,13 @@ export class AnalyticsCalculator {
 
     const summaries = Array.from(byMonth.entries()).map(([month, txns]) => {
       const nonExcluded = txns.filter(t => !t.isExcluded);
-      const debits = nonExcluded.filter(t => t.type === 'DEBIT');
-      const credits = nonExcluded.filter(t => t.type === 'CREDIT');
+      const expenses = nonExcluded.filter(t => t.type === 'DEBIT');
 
       return {
         month,
-        totalDebits: this.sumAmounts(debits),
-        totalCredits: this.sumAmounts(credits),
-        net: this.sumAmounts(credits) - Math.abs(this.sumAmounts(debits)),
+        totalDebits: this.sumAmounts(expenses),
+        totalCredits: 0, // Not tracking income
+        net: 0, // Not tracking income
         categoryTotals: this.computeCategoryTotalsForTransactions(nonExcluded),
         transactionCount: nonExcluded.length
       };
@@ -99,11 +98,9 @@ export class AnalyticsCalculator {
    */
   computeOverallStats() {
     const nonExcluded = this.transactions.filter(t => !t.isExcluded);
-    const debits = nonExcluded.filter(t => t.type === 'DEBIT');
-    const credits = nonExcluded.filter(t => t.type === 'CREDIT');
+    const expenses = nonExcluded.filter(t => t.type === 'DEBIT');
 
-    const totalDebits = Math.abs(this.sumAmounts(debits));
-    const totalCredits = this.sumAmounts(credits);
+    const totalDebits = Math.abs(this.sumAmounts(expenses));
 
     // Calculate date range
     let dateRange: { start: Date; end: Date } | null = null;
@@ -121,8 +118,8 @@ export class AnalyticsCalculator {
 
     return {
       totalDebits,
-      totalCredits,
-      net: totalCredits - totalDebits,
+      totalCredits: 0, // Not tracking income
+      net: 0, // Not tracking income
       transactionCount: nonExcluded.length,
       dateRange,
       monthCount,

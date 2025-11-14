@@ -222,15 +222,30 @@ export function Settings() {
 
           <div className="border-t pt-4">
             <h3 className="font-semibold mb-3 text-red-600">Danger Zone</h3>
-            <button
-              onClick={actions.clearAllData}
-              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-            >
-              Clear All Data
-            </button>
-            <p className="text-sm text-gray-600 mt-2">
-              This will delete all transactions, preferences, and settings. This cannot be undone.
-            </p>
+            <div className="space-y-4">
+              <div>
+                <button
+                  onClick={actions.clearTransactions}
+                  className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700"
+                >
+                  Clear Transactions Only
+                </button>
+                <p className="text-sm text-gray-600 mt-2">
+                  Delete all transactions but keep your categories, patterns, and description mappings.
+                </p>
+              </div>
+              <div>
+                <button
+                  onClick={actions.clearAllData}
+                  className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                >
+                  Clear All Data
+                </button>
+                <p className="text-sm text-gray-600 mt-2">
+                  This will delete all transactions, preferences, and settings. This cannot be undone.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}

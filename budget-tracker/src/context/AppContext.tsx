@@ -41,6 +41,7 @@ type AppAction =
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'ADD_ERROR'; payload: string }
   | { type: 'CLEAR_ERRORS' }
+  | { type: 'CLEAR_TRANSACTIONS' }
   | { type: 'CLEAR_ALL' };
 
 // Reducer
@@ -272,6 +273,14 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'CLEAR_ERRORS':
       return { ...state, errors: [] };
 
+    case 'CLEAR_TRANSACTIONS':
+      return {
+        ...state,
+        transactions: [],
+        excludedIds: new Set(),
+        manualOverrides: new Map()
+      };
+
     case 'CLEAR_ALL':
       return initialState;
 
@@ -313,28 +322,63 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Save transactions when they change
   useEffect(() => {
     if (state.transactions.length > 0) {
-      storage.saveTransactions(state.transactions);
+      try {
+        storage.saveTransactions(state.transactions);
+      } catch (error) {
+        dispatch({
+          type: 'ADD_ERROR',
+          payload: error instanceof Error ? error.message : 'Failed to save transactions'
+        });
+      }
     }
   }, [state.transactions, storage]);
 
   // Save preferences when they change
   useEffect(() => {
-    storage.savePreferences(state.preferences);
+    try {
+      storage.savePreferences(state.preferences);
+    } catch (error) {
+      dispatch({
+        type: 'ADD_ERROR',
+        payload: error instanceof Error ? error.message : 'Failed to save preferences'
+      });
+    }
   }, [state.preferences, storage]);
 
   // Save excluded IDs when they change
   useEffect(() => {
-    storage.saveExcludedIds(state.excludedIds);
+    try {
+      storage.saveExcludedIds(state.excludedIds);
+    } catch (error) {
+      dispatch({
+        type: 'ADD_ERROR',
+        payload: error instanceof Error ? error.message : 'Failed to save excluded IDs'
+      });
+    }
   }, [state.excludedIds, storage]);
 
   // Save manual overrides when they change
   useEffect(() => {
-    storage.saveManualOverrides(state.manualOverrides);
+    try {
+      storage.saveManualOverrides(state.manualOverrides);
+    } catch (error) {
+      dispatch({
+        type: 'ADD_ERROR',
+        payload: error instanceof Error ? error.message : 'Failed to save manual overrides'
+      });
+    }
   }, [state.manualOverrides, storage]);
 
   // Save description mappings when they change
   useEffect(() => {
-    storage.saveDescriptionMappings(state.descriptionMappings);
+    try {
+      storage.saveDescriptionMappings(state.descriptionMappings);
+    } catch (error) {
+      dispatch({
+        type: 'ADD_ERROR',
+        payload: error instanceof Error ? error.message : 'Failed to save description mappings'
+      });
+    }
   }, [state.descriptionMappings, storage]);
 
   // Actions
@@ -461,6 +505,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         state.manualOverrides,
         state.descriptionMappings
       );
+    },
+
+    clearTransactions: () => {
+      if (confirm('Are you sure you want to clear all transactions? Your categories, patterns, and mappings will be preserved.')) {
+        storage.clearTransactions();
+        dispatch({ type: 'CLEAR_TRANSACTIONS' });
+      }
     },
 
     clearAllData: () => {

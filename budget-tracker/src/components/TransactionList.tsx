@@ -17,11 +17,12 @@ export function TransactionList() {
 
   // Filter and sort transactions
   const filteredAndSortedTransactions = useMemo(() => {
-    // First, filter by search query
-    let filtered = state.transactions;
+    // Always filter to expenses only (DEBIT transactions)
+    let filtered = state.transactions.filter(t => t.type === 'DEBIT');
+
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = state.transactions.filter(t =>
+      filtered = filtered.filter(t =>
         t.description.toLowerCase().includes(query)
       );
     }

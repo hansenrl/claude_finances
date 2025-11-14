@@ -28,21 +28,11 @@ export function Dashboard() {
     <div className="bg-white p-6 rounded-lg shadow">
       <h2 className="text-xl font-semibold mb-4">Dashboard</h2>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
         <StatCard
           label="Total Expenses"
           value={formatCurrency(overallStats.totalDebits)}
           color="text-red-600"
-        />
-        <StatCard
-          label="Total Income"
-          value={formatCurrency(overallStats.totalCredits)}
-          color="text-green-600"
-        />
-        <StatCard
-          label="Net"
-          value={formatCurrency(overallStats.net)}
-          color={overallStats.net >= 0 ? 'text-green-600' : 'text-red-600'}
         />
         <StatCard
           label="Avg Monthly"

@@ -139,6 +139,7 @@ export interface AppContextValue {
     exportPreferences: () => void;
     importPreferences: (file: File) => Promise<void>;
     exportData: () => void;
+    clearTransactions: () => void;
     clearAllData: () => void;
     loadSampleData: () => Promise<void>;
   };

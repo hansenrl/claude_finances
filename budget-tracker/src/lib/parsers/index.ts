@@ -67,8 +67,11 @@ export async function parseFiles(files: File[]): Promise<ParseResult> {
     allErrors.push(...result.errors);
   }
 
+  // Filter to expenses only (DEBIT transactions) - exclude all income/payments
+  const expensesOnly = allTransactions.filter(t => t.type === 'DEBIT');
+
   return {
-    transactions: allTransactions,
+    transactions: expensesOnly,
     errors: allErrors
   };
 }
