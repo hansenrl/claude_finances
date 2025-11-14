@@ -94,9 +94,25 @@ function ExpenseRow({
   isExpanded: boolean;
   onToggle: () => void;
 }) {
+  const { state, actions } = useApp();
   const expenseTransactions = transactions.filter(t =>
     expense.transactionIds.includes(t.id)
   );
+
+  // Determine the current category (if all transactions have the same category)
+  const currentCategory = useMemo(() => {
+    if (expenseTransactions.length === 0) return '';
+    const firstCategory = expenseTransactions[0].categoryId || '';
+    const allSame = expenseTransactions.every(txn => (txn.categoryId || '') === firstCategory);
+    return allSame ? firstCategory : '';
+  }, [expenseTransactions]);
+
+  const handleCategoryChange = (categoryId: string) => {
+    // Apply category to all transactions in this repeated expense group
+    expenseTransactions.forEach(txn => {
+      actions.categorizeTransaction(txn.id, categoryId);
+    });
+  };
 
   return (
     <div className="border rounded">
@@ -125,6 +141,21 @@ function ExpenseRow({
 
       {isExpanded && (
         <div className="border-t p-3 bg-gray-50">
+          <div className="mb-3 flex items-center gap-2">
+            <label className="text-sm font-semibold">Category:</label>
+            <select
+              value={currentCategory}
+              onChange={(e) => handleCategoryChange(e.target.value)}
+              className="text-sm border rounded px-2 py-1 bg-white"
+            >
+              <option value="">Uncategorized</option>
+              {state.categories.map(cat => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="text-sm font-semibold mb-2">Transactions:</div>
           <div className="space-y-1">
             {expenseTransactions.map(txn => (
