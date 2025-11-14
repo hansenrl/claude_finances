@@ -6,6 +6,7 @@ const STORAGE_KEYS = {
   TRANSACTIONS: 'budget_tracker_transactions',
   PREFERENCES: 'budget_tracker_preferences',
   EXCLUDED_IDS: 'budget_tracker_excluded_ids',
+  EXCLUDED_REPEATED_EXPENSES: 'budget_tracker_excluded_repeated_expenses',
   MANUAL_OVERRIDES: 'budget_tracker_manual_overrides',
   DESCRIPTION_MAPPINGS: 'budget_tracker_description_mappings',
   VERSION: 'budget_tracker_version'
@@ -119,6 +120,37 @@ export class StorageManager {
   }
 
   /**
+   * Save excluded repeated expense patterns
+   */
+  saveExcludedRepeatedExpenses(patterns: Set<string>): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.EXCLUDED_REPEATED_EXPENSES, JSON.stringify(Array.from(patterns)));
+    } catch (e) {
+      console.error('Error saving excluded repeated expenses:', e);
+      if (this.isQuotaExceeded(e)) {
+        throw new Error('Storage quota exceeded. Unable to save excluded repeated expenses.');
+      }
+      throw new Error('Failed to save excluded repeated expenses. Please try again.');
+    }
+  }
+
+  /**
+   * Load excluded repeated expense patterns
+   */
+  loadExcludedRepeatedExpenses(): Set<string> {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.EXCLUDED_REPEATED_EXPENSES);
+      if (!data) return new Set();
+
+      const parsed = JSON.parse(data);
+      return new Set(parsed);
+    } catch (error) {
+      console.error('Error loading excluded repeated expenses:', error);
+      return new Set();
+    }
+  }
+
+  /**
    * Save manual category overrides
    */
   saveManualOverrides(overrides: Map<string, string>): void {
@@ -199,6 +231,7 @@ export class StorageManager {
     transactions: Transaction[],
     preferences: Preferences,
     excludedIds: Set<string>,
+    excludedRepeatedExpenses: Set<string>,
     manualOverrides: Map<string, string>,
     descriptionMappings: Map<string, string>
   ): void {
@@ -206,6 +239,7 @@ export class StorageManager {
       transactions,
       preferences,
       excludedIds: Array.from(excludedIds),
+      excludedRepeatedExpenses: Array.from(excludedRepeatedExpenses),
       manualOverrides: Object.fromEntries(manualOverrides),
       descriptionMappings: Object.fromEntries(descriptionMappings),
       exportedAt: new Date(),

@@ -99,6 +99,9 @@ function ExpenseRow({
     expense.transactionIds.includes(t.id)
   );
 
+  // Check if this repeated expense is excluded
+  const isExcluded = state.excludedRepeatedExpenses.has(expense.merchantPattern);
+
   // Determine the current category (if all transactions have the same category)
   const currentCategory = useMemo(() => {
     if (expenseTransactions.length === 0) return '';
@@ -114,21 +117,36 @@ function ExpenseRow({
     });
   };
 
+  const handleExclusionToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation(); // Prevent row expansion
+    actions.toggleRepeatedExpenseExclusion(expense.merchantPattern, expense.transactionIds);
+  };
+
   return (
-    <div className="border rounded">
+    <div className={`border rounded ${isExcluded ? 'opacity-50 bg-gray-100' : ''}`}>
       <div
         className="p-3 cursor-pointer hover:bg-gray-50 flex items-center justify-between"
         onClick={onToggle}
       >
-        <div className="flex-1">
-          <div className="font-semibold">{expense.merchantPattern}</div>
-          <div className="text-sm text-gray-600">
-            {expense.occurrences} occurrences • Avg: {formatCurrency(expense.averageAmount)}
-            {expense.estimatedMonthly && (
-              <span className="ml-2 text-blue-600">
-                ~{formatCurrency(expense.estimatedMonthly)}/month
-              </span>
-            )}
+        <div className="flex items-center gap-3 flex-1">
+          <input
+            type="checkbox"
+            checked={isExcluded}
+            onChange={handleExclusionToggle}
+            onClick={(e) => e.stopPropagation()}
+            className="w-4 h-4 cursor-pointer"
+            title={isExcluded ? "Include in analytics" : "Exclude from analytics"}
+          />
+          <div className="flex-1">
+            <div className="font-semibold">{expense.merchantPattern}</div>
+            <div className="text-sm text-gray-600">
+              {expense.occurrences} occurrences • Avg: {formatCurrency(expense.averageAmount)}
+              {expense.estimatedMonthly && (
+                <span className="ml-2 text-blue-600">
+                  ~{formatCurrency(expense.estimatedMonthly)}/month
+                </span>
+              )}
+            </div>
           </div>
         </div>
         <div className="text-right">

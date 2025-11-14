@@ -14,6 +14,7 @@ const initialState: AppState = {
   rules: [],
   preferences: getDefaultPreferences(),
   excludedIds: new Set(),
+  excludedRepeatedExpenses: new Set(),
   manualOverrides: new Map(),
   descriptionMappings: new Map(),
   isLoading: false,
@@ -22,10 +23,11 @@ const initialState: AppState = {
 
 // Action types
 type AppAction =
-  | { type: 'LOAD_DATA'; payload: { transactions: Transaction[]; preferences: Preferences; excludedIds: Set<string>; manualOverrides: Map<string, string>; descriptionMappings: Map<string, string> } }
+  | { type: 'LOAD_DATA'; payload: { transactions: Transaction[]; preferences: Preferences; excludedIds: Set<string>; excludedRepeatedExpenses: Set<string>; manualOverrides: Map<string, string>; descriptionMappings: Map<string, string> } }
   | { type: 'ADD_TRANSACTIONS'; payload: { transactions: Transaction[]; errors: string[] } }
   | { type: 'CATEGORIZE_TRANSACTION'; payload: { id: string; categoryId: string; description: string } }
   | { type: 'TOGGLE_EXCLUSION'; payload: string }
+  | { type: 'TOGGLE_REPEATED_EXPENSE_EXCLUSION'; payload: { merchantPattern: string; transactionIds: string[] } }
   | { type: 'ADD_CATEGORY'; payload: Category }
   | { type: 'UPDATE_CATEGORY'; payload: Category }
   | { type: 'DELETE_CATEGORY'; payload: string }
@@ -55,6 +57,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
         categories: action.payload.preferences.categories,
         rules: action.payload.preferences.rules,
         excludedIds: action.payload.excludedIds,
+        excludedRepeatedExpenses: action.payload.excludedRepeatedExpenses,
         manualOverrides: action.payload.manualOverrides,
         descriptionMappings: action.payload.descriptionMappings,
         isLoading: false
@@ -113,6 +116,43 @@ function appReducer(state: AppState, action: AppAction): AppState {
           return next;
         })()
       };
+
+    case 'TOGGLE_REPEATED_EXPENSE_EXCLUSION': {
+      const { merchantPattern, transactionIds } = action.payload;
+      const nextExcludedRepeated = new Set(state.excludedRepeatedExpenses);
+      const isCurrentlyExcluded = nextExcludedRepeated.has(merchantPattern);
+
+      // Toggle the merchant pattern exclusion
+      if (isCurrentlyExcluded) {
+        nextExcludedRepeated.delete(merchantPattern);
+      } else {
+        nextExcludedRepeated.add(merchantPattern);
+      }
+
+      // Toggle all transactions in this repeated expense group
+      const nextExcludedIds = new Set(state.excludedIds);
+      transactionIds.forEach(id => {
+        if (isCurrentlyExcluded) {
+          nextExcludedIds.delete(id);
+        } else {
+          nextExcludedIds.add(id);
+        }
+      });
+
+      // Update all transactions
+      const updatedTransactions = state.transactions.map(t =>
+        transactionIds.includes(t.id)
+          ? { ...t, isExcluded: !isCurrentlyExcluded }
+          : t
+      );
+
+      return {
+        ...state,
+        transactions: updatedTransactions,
+        excludedIds: nextExcludedIds,
+        excludedRepeatedExpenses: nextExcludedRepeated
+      };
+    }
 
     case 'ADD_CATEGORY':
       return {
@@ -278,6 +318,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         transactions: [],
         excludedIds: new Set(),
+        excludedRepeatedExpenses: new Set(),
         manualOverrides: new Map()
       };
 
@@ -302,6 +343,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const transactions = storage.loadTransactions();
     const preferences = storage.loadPreferences() || getDefaultPreferences();
     const excludedIds = storage.loadExcludedIds();
+    const excludedRepeatedExpenses = storage.loadExcludedRepeatedExpenses();
     const manualOverrides = storage.loadManualOverrides();
     const descriptionMappings = storage.loadDescriptionMappings();
 
@@ -315,7 +357,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     dispatch({
       type: 'LOAD_DATA',
-      payload: { transactions: updatedTransactions, preferences, excludedIds, manualOverrides, descriptionMappings }
+      payload: { transactions: updatedTransactions, preferences, excludedIds, excludedRepeatedExpenses, manualOverrides, descriptionMappings }
     });
   }, [storage]);
 
@@ -356,6 +398,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
     }
   }, [state.excludedIds, storage]);
+
+  // Save excluded repeated expenses when they change
+  useEffect(() => {
+    try {
+      storage.saveExcludedRepeatedExpenses(state.excludedRepeatedExpenses);
+    } catch (error) {
+      dispatch({
+        type: 'ADD_ERROR',
+        payload: error instanceof Error ? error.message : 'Failed to save excluded repeated expenses'
+      });
+    }
+  }, [state.excludedRepeatedExpenses, storage]);
 
   // Save manual overrides when they change
   useEffect(() => {
@@ -437,6 +491,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'TOGGLE_EXCLUSION', payload: id });
     },
 
+    toggleRepeatedExpenseExclusion: (merchantPattern: string, transactionIds: string[]) => {
+      dispatch({ type: 'TOGGLE_REPEATED_EXPENSE_EXCLUSION', payload: { merchantPattern, transactionIds } });
+    },
+
     addCategory: (category: Category) => {
       dispatch({ type: 'ADD_CATEGORY', payload: category });
     },
@@ -502,6 +560,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         state.transactions,
         state.preferences,
         state.excludedIds,
+        state.excludedRepeatedExpenses,
         state.manualOverrides,
         state.descriptionMappings
       );

@@ -110,6 +110,7 @@ export interface AppState {
   rules: CategorizationRule[];
   preferences: Preferences;
   excludedIds: Set<string>;
+  excludedRepeatedExpenses: Set<string>; // merchant patterns of excluded repeated expenses
   manualOverrides: Map<string, string>; // transactionId -> categoryId
   descriptionMappings: Map<string, string>; // description -> categoryId
   isLoading: boolean;
@@ -123,6 +124,7 @@ export interface AppContextValue {
     uploadFiles: (files: File[]) => Promise<void>;
     categorizeTransaction: (id: string, categoryId: string) => void;
     toggleExclusion: (id: string) => void;
+    toggleRepeatedExpenseExclusion: (merchantPattern: string, transactionIds: string[]) => void;
     addCategory: (category: Category) => void;
     updateCategory: (category: Category) => void;
     addRule: (rule: CategorizationRule) => void;
