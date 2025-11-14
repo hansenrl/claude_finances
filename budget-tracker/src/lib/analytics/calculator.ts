@@ -63,30 +63,23 @@ export class AnalyticsCalculator {
     const repeated: RepeatedExpense[] = [];
 
     groups.forEach((txns, merchant) => {
-      if (txns.length < 2) return;
+      if (txns.length < 4) return;
 
       const amounts = txns.map(t => Math.abs(t.amount));
       const avgAmount = amounts.reduce((a, b) => a + b, 0) / amounts.length;
 
-      // Check if amounts are similar (within 10%)
-      const isSimilar = amounts.every(amt =>
-        Math.abs(amt - avgAmount) / avgAmount <= 0.1
-      );
+      const isLikelySubscription = this.isLikelySubscription(txns);
+      const estimatedMonthly = isLikelySubscription ? avgAmount : undefined;
 
-      if (isSimilar) {
-        const isLikelySubscription = this.isLikelySubscription(txns);
-        const estimatedMonthly = isLikelySubscription ? avgAmount : undefined;
-
-        repeated.push({
-          merchantPattern: merchant,
-          occurrences: txns.length,
-          averageAmount: avgAmount,
-          totalAmount: amounts.reduce((a, b) => a + b, 0),
-          transactionIds: txns.map(t => t.id),
-          isLikelySubscription,
-          estimatedMonthly
-        });
-      }
+      repeated.push({
+        merchantPattern: merchant,
+        occurrences: txns.length,
+        averageAmount: avgAmount,
+        totalAmount: amounts.reduce((a, b) => a + b, 0),
+        transactionIds: txns.map(t => t.id),
+        isLikelySubscription,
+        estimatedMonthly
+      });
     });
 
     // Sort by total amount (descending)
