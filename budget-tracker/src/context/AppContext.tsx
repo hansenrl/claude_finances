@@ -15,15 +15,16 @@ const initialState: AppState = {
   preferences: getDefaultPreferences(),
   excludedIds: new Set(),
   manualOverrides: new Map(),
+  descriptionMappings: new Map(),
   isLoading: false,
   errors: [],
 };
 
 // Action types
 type AppAction =
-  | { type: 'LOAD_DATA'; payload: { transactions: Transaction[]; preferences: Preferences; excludedIds: Set<string>; manualOverrides: Map<string, string> } }
+  | { type: 'LOAD_DATA'; payload: { transactions: Transaction[]; preferences: Preferences; excludedIds: Set<string>; manualOverrides: Map<string, string>; descriptionMappings: Map<string, string> } }
   | { type: 'ADD_TRANSACTIONS'; payload: { transactions: Transaction[]; errors: string[] } }
-  | { type: 'CATEGORIZE_TRANSACTION'; payload: { id: string; categoryId: string } }
+  | { type: 'CATEGORIZE_TRANSACTION'; payload: { id: string; categoryId: string; description: string } }
   | { type: 'TOGGLE_EXCLUSION'; payload: string }
   | { type: 'ADD_CATEGORY'; payload: Category }
   | { type: 'UPDATE_CATEGORY'; payload: Category }
@@ -35,6 +36,7 @@ type AppAction =
   | { type: 'UPDATE_PATTERN'; payload: { categoryId: string; pattern: CategoryPattern } }
   | { type: 'DELETE_PATTERN'; payload: { categoryId: string; patternId: string } }
   | { type: 'REORDER_PATTERNS'; payload: { categoryId: string; patterns: CategoryPattern[] } }
+  | { type: 'DELETE_DESCRIPTION_MAPPING'; payload: string }
   | { type: 'IMPORT_PREFERENCES'; payload: Preferences }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'ADD_ERROR'; payload: string }
@@ -53,6 +55,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
         rules: action.payload.preferences.rules,
         excludedIds: action.payload.excludedIds,
         manualOverrides: action.payload.manualOverrides,
+        descriptionMappings: action.payload.descriptionMappings,
         isLoading: false
       };
 
@@ -68,19 +71,30 @@ function appReducer(state: AppState, action: AppAction): AppState {
       };
     }
 
-    case 'CATEGORIZE_TRANSACTION':
+    case 'CATEGORIZE_TRANSACTION': {
+      // Update description mapping for all transactions with same description
+      const nextDescriptionMappings = new Map(state.descriptionMappings);
+      nextDescriptionMappings.set(action.payload.description, action.payload.categoryId);
+
+      // Update all transactions with the same description
+      const updatedTransactions = state.transactions.map(t => {
+        if (t.description === action.payload.description) {
+          return { ...t, categoryId: action.payload.categoryId, isManuallyCategorized: true };
+        }
+        return t;
+      });
+
+      // Also set manual override for the specific transaction
+      const nextManualOverrides = new Map(state.manualOverrides);
+      nextManualOverrides.set(action.payload.id, action.payload.categoryId);
+
       return {
         ...state,
-        transactions: state.transactions.map(t =>
-          t.id === action.payload.id
-            ? { ...t, categoryId: action.payload.categoryId, isManuallyCategorized: true }
-            : t
-        ),
-        manualOverrides: new Map(state.manualOverrides).set(
-          action.payload.id,
-          action.payload.categoryId
-        )
+        transactions: updatedTransactions,
+        manualOverrides: nextManualOverrides,
+        descriptionMappings: nextDescriptionMappings
       };
+    }
 
     case 'TOGGLE_EXCLUSION':
       return {
@@ -202,6 +216,15 @@ function appReducer(state: AppState, action: AppAction): AppState {
       };
     }
 
+    case 'DELETE_DESCRIPTION_MAPPING': {
+      const nextMappings = new Map(state.descriptionMappings);
+      nextMappings.delete(action.payload);
+      return {
+        ...state,
+        descriptionMappings: nextMappings
+      };
+    }
+
     case 'ADD_RULE':
       return {
         ...state,
@@ -271,6 +294,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const preferences = storage.loadPreferences() || getDefaultPreferences();
     const excludedIds = storage.loadExcludedIds();
     const manualOverrides = storage.loadManualOverrides();
+    const descriptionMappings = storage.loadDescriptionMappings();
 
     // Apply exclusions and manual overrides to loaded transactions
     const updatedTransactions = transactions.map(t => ({
@@ -282,7 +306,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     dispatch({
       type: 'LOAD_DATA',
-      payload: { transactions: updatedTransactions, preferences, excludedIds, manualOverrides }
+      payload: { transactions: updatedTransactions, preferences, excludedIds, manualOverrides, descriptionMappings }
     });
   }, [storage]);
 
@@ -308,6 +332,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     storage.saveManualOverrides(state.manualOverrides);
   }, [state.manualOverrides, storage]);
 
+  // Save description mappings when they change
+  useEffect(() => {
+    storage.saveDescriptionMappings(state.descriptionMappings);
+  }, [state.descriptionMappings, storage]);
+
   // Actions
   const actions = useMemo(() => ({
     uploadFiles: async (files: File[]) => {
@@ -327,7 +356,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           // Auto-categorize new transactions
           const engine = new CategorizationEngine(
             state.categories,
-            state.rules
+            state.rules,
+            state.descriptionMappings
           );
           engine.batchCategorize(result.transactions);
 
@@ -350,10 +380,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
 
     categorizeTransaction: (id: string, categoryId: string) => {
-      dispatch({
-        type: 'CATEGORIZE_TRANSACTION',
-        payload: { id, categoryId }
-      });
+      const transaction = state.transactions.find(t => t.id === id);
+      if (transaction) {
+        dispatch({
+          type: 'CATEGORIZE_TRANSACTION',
+          payload: { id, categoryId, description: transaction.description }
+        });
+      }
     },
 
     toggleExclusion: (id: string) => {
@@ -386,6 +419,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     reorderPatterns: (categoryId: string, patterns: CategoryPattern[]) => {
       dispatch({ type: 'REORDER_PATTERNS', payload: { categoryId, patterns } });
+    },
+
+    deleteDescriptionMapping: (description: string) => {
+      dispatch({ type: 'DELETE_DESCRIPTION_MAPPING', payload: description });
     },
 
     addRule: (rule: CategorizationRule) => {
@@ -421,7 +458,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         state.transactions,
         state.preferences,
         state.excludedIds,
-        state.manualOverrides
+        state.manualOverrides,
+        state.descriptionMappings
       );
     },
 
@@ -439,7 +477,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // Auto-categorize sample transactions
         const engine = new CategorizationEngine(
           state.categories,
-          state.rules
+          state.rules,
+          state.descriptionMappings
         );
         engine.batchCategorize(sampleTransactions);
 
@@ -457,7 +496,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
       }
     }
-  }), [state.categories, state.rules, state.preferences, state.transactions, state.excludedIds, state.manualOverrides, storage]);
+  }), [state.categories, state.rules, state.preferences, state.transactions, state.excludedIds, state.manualOverrides, state.descriptionMappings, storage]);
 
   const value: AppContextValue = {
     state,

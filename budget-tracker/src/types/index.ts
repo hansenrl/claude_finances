@@ -110,7 +110,8 @@ export interface AppState {
   rules: CategorizationRule[];
   preferences: Preferences;
   excludedIds: Set<string>;
-  manualOverrides: Map<string, string>;
+  manualOverrides: Map<string, string>; // transactionId -> categoryId
+  descriptionMappings: Map<string, string>; // description -> categoryId
   isLoading: boolean;
   errors: string[];
 }
@@ -133,6 +134,8 @@ export interface AppContextValue {
     updatePattern: (categoryId: string, pattern: CategoryPattern) => void;
     deletePattern: (categoryId: string, patternId: string) => void;
     reorderPatterns: (categoryId: string, patterns: CategoryPattern[]) => void;
+    // Description mapping management
+    deleteDescriptionMapping: (description: string) => void;
     exportPreferences: () => void;
     importPreferences: (file: File) => Promise<void>;
     exportData: () => void;
