@@ -8,7 +8,7 @@ type SortField = 'date' | 'description' | 'amount' | 'category';
 type SortDirection = 'asc' | 'desc';
 
 export function TransactionList() {
-  const { state, actions } = useApp();
+  const { state, filteredTransactions, actions } = useApp();
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [searchQuery, setSearchQuery] = useState('');
@@ -18,7 +18,7 @@ export function TransactionList() {
   // Filter and sort transactions
   const filteredAndSortedTransactions = useMemo(() => {
     // Always filter to expenses only (DEBIT transactions)
-    let filtered = state.transactions.filter(t => t.type === 'DEBIT');
+    let filtered = filteredTransactions.filter(t => t.type === 'DEBIT');
 
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -54,7 +54,7 @@ export function TransactionList() {
     });
 
     return sorted;
-  }, [state.transactions, state.categories, sortField, sortDirection, searchQuery]);
+  }, [filteredTransactions, state.categories, sortField, sortDirection, searchQuery]);
 
   const virtualizer = useVirtualizer({
     count: filteredAndSortedTransactions.length,
@@ -72,7 +72,7 @@ export function TransactionList() {
     }
   };
 
-  if (state.transactions.length === 0) {
+  if (filteredTransactions.length === 0) {
     return (
       <div className="bg-white p-6 rounded-lg shadow">
         <h2 className="text-xl font-semibold mb-4">Transactions</h2>
@@ -86,8 +86,8 @@ export function TransactionList() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold">
           Transactions ({filteredAndSortedTransactions.length}
-          {searchQuery && state.transactions.length !== filteredAndSortedTransactions.length &&
-            ` of ${state.transactions.length}`})
+          {searchQuery && filteredTransactions.filter(t => t.type === 'DEBIT').length !== filteredAndSortedTransactions.length &&
+            ` of ${filteredTransactions.filter(t => t.type === 'DEBIT').length}`})
         </h2>
 
         <div className="flex items-center space-x-2">
