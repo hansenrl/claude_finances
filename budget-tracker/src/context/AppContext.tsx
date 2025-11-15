@@ -782,8 +782,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return state.transactions;
     }
 
-    const startDate = new Date(state.timeWindowFilter.startDate);
-    const endDate = new Date(state.timeWindowFilter.endDate);
+    // Parse dates as local dates (not UTC) by extracting year, month, day
+    const parseLocalDate = (dateStr: string): Date => {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      return new Date(year, month - 1, day); // month is 0-indexed
+    };
+
+    const startDate = parseLocalDate(state.timeWindowFilter.startDate);
+    const endDate = parseLocalDate(state.timeWindowFilter.endDate);
 
     return state.transactions.filter(t => {
       const txDate = t.date instanceof Date ? t.date : new Date(t.date);
