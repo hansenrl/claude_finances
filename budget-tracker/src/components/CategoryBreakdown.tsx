@@ -21,9 +21,10 @@ export function CategoryBreakdown() {
 
     const data = Object.entries(analytics.categoryTotals).map(([categoryId, total]) => {
       const category = state.categories.find(c => c.id === categoryId);
-      const transactions = state.transactions.filter(t =>
-        t.categoryId === categoryId && !t.isExcluded && t.type === 'DEBIT'
-      );
+      const transactions = state.transactions.filter(t => {
+        const txCategoryId = t.categoryId || 'uncategorized';
+        return txCategoryId === categoryId && !t.isExcluded && t.type === 'DEBIT';
+      });
 
       return {
         id: categoryId,
@@ -76,7 +77,9 @@ export function CategoryBreakdown() {
       tooltip: {
         callbacks: {
           label: (context: any) => {
-            const value = context.parsed || context.parsed?.y || 0;
+            // For pie charts, context.parsed is a number
+            // For bar charts, context.parsed is an object with x and y properties
+            const value = typeof context.parsed === 'number' ? context.parsed : context.parsed?.y ?? 0;
             return `${context.label}: ${formatCurrency(value)}`;
           }
         }
