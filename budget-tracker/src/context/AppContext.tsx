@@ -32,6 +32,7 @@ type AppAction =
   | { type: 'LOAD_DATA'; payload: { transactions: Transaction[]; preferences: Preferences; manualOverrides: Map<string, string>; descriptionMappings: Map<string, string> } }
   | { type: 'ADD_TRANSACTIONS'; payload: { transactions: Transaction[]; errors: string[] } }
   | { type: 'CATEGORIZE_TRANSACTION'; payload: { id: string; categoryId: string; description: string } }
+  | { type: 'RECATEGORIZE_TRANSACTIONS'; payload: { preserveManual: boolean } }
   | { type: 'TOGGLE_EXCLUSION'; payload: string }
   | { type: 'TOGGLE_REPEATED_EXPENSE_EXCLUSION'; payload: { merchantPattern: string; transactionIds: string[] } }
   | { type: 'ADD_CATEGORY'; payload: Category }
@@ -149,6 +150,40 @@ function appReducer(state: AppState, action: AppAction): AppState {
         transactions: updatedTransactions,
         manualOverrides: nextManualOverrides,
         descriptionMappings: nextDescriptionMappings
+      };
+    }
+
+    case 'RECATEGORIZE_TRANSACTIONS': {
+      const engine = new CategorizationEngine(
+        state.categories,
+        state.rules,
+        state.descriptionMappings
+      );
+
+      const recategorizedTransactions = state.transactions.map(t => {
+        // Skip excluded transactions
+        if (t.isExcluded) {
+          return t;
+        }
+
+        // Skip manually categorized transactions if preserveManual is true
+        if (action.payload.preserveManual && t.isManuallyCategorized) {
+          return t;
+        }
+
+        // Recategorize the transaction
+        const newCategoryId = engine.categorize(t);
+        return {
+          ...t,
+          categoryId: newCategoryId,
+          // If we're recategorizing, clear the manual flag unless preserveManual is true and it was already manual
+          isManuallyCategorized: action.payload.preserveManual && t.isManuallyCategorized
+        };
+      });
+
+      return {
+        ...state,
+        transactions: recategorizedTransactions
       };
     }
 
@@ -610,6 +645,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           payload: { id, categoryId, description: transaction.description }
         });
       }
+    },
+
+    recategorizeTransactions: (preserveManual: boolean = true) => {
+      dispatch({ type: 'RECATEGORIZE_TRANSACTIONS', payload: { preserveManual } });
     },
 
     toggleExclusion: (id: string) => {

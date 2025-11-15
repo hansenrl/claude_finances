@@ -137,6 +137,7 @@ export interface AppContextValue {
   actions: {
     uploadFiles: (files: File[]) => Promise<void>;
     categorizeTransaction: (id: string, categoryId: string) => void;
+    recategorizeTransactions: (preserveManual?: boolean) => void;
     toggleExclusion: (id: string) => void;
     toggleRepeatedExpenseExclusion: (merchantPattern: string, transactionIds: string[]) => void;
     addCategory: (category: Category) => void;
