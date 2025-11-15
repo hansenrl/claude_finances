@@ -51,7 +51,13 @@ export function MonthlyAnalysis() {
     new Set(
       monthlyData.flatMap(m => Object.keys(m.categoryTotals))
     )
-  );
+  ).sort((a, b) => {
+    const catA = state.categories.find(c => c.id === a);
+    const catB = state.categories.find(c => c.id === b);
+    const nameA = catA?.name || 'Uncategorized';
+    const nameB = catB?.name || 'Uncategorized';
+    return nameA.localeCompare(nameB);
+  });
 
   const stackedBarData = {
     labels: monthlyData.map(m => m.monthLabel),

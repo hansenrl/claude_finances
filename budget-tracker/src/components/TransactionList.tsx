@@ -167,11 +167,13 @@ export function TransactionList() {
                     className="w-full text-xs border rounded px-1 py-1"
                   >
                     <option value="">Uncategorized</option>
-                    {state.categories.map(cat => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                    ))}
+                    {[...state.categories]
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map(cat => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </option>
+                      ))}
                   </select>
                 </div>
                 <div className="p-2 border-r truncate text-xs text-gray-600" style={{ width: '200px' }} title={transaction.sourceFile}>

@@ -167,11 +167,13 @@ function ExpenseRow({
               className="text-sm border rounded px-2 py-1 bg-white"
             >
               <option value="">Uncategorized</option>
-              {state.categories.map(cat => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
-              ))}
+              {[...state.categories]
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map(cat => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
             </select>
           </div>
           <div className="text-sm font-semibold mb-2">Transactions:</div>

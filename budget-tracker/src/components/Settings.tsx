@@ -59,18 +59,20 @@ export function Settings() {
           </div>
 
           <div className="space-y-2">
-            {state.categories.map(category => (
-              <CategoryCard
-                key={category.id}
-                category={category}
-                isExpanded={expandedCategories.has(category.id)}
-                onToggle={() => toggleCategory(category.id)}
-                onAddPattern={(pattern) => actions.addPatternToCategory(category.id, pattern)}
-                onUpdatePattern={(pattern) => actions.updatePattern(category.id, pattern)}
-                onDeletePattern={(patternId) => actions.deletePattern(category.id, patternId)}
-                onDeleteCategory={() => actions.deleteCategory(category.id)}
-              />
-            ))}
+            {[...state.categories]
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map(category => (
+                <CategoryCard
+                  key={category.id}
+                  category={category}
+                  isExpanded={expandedCategories.has(category.id)}
+                  onToggle={() => toggleCategory(category.id)}
+                  onAddPattern={(pattern) => actions.addPatternToCategory(category.id, pattern)}
+                  onUpdatePattern={(pattern) => actions.updatePattern(category.id, pattern)}
+                  onDeletePattern={(patternId) => actions.deletePattern(category.id, patternId)}
+                  onDeleteCategory={() => actions.deleteCategory(category.id)}
+                />
+              ))}
           </div>
 
           <div className="mt-6">
