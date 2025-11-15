@@ -20,6 +20,11 @@ const initialState: AppState = {
   descriptionMappings: new Map(),
   isLoading: false,
   errors: [],
+  timeWindowFilter: {
+    enabled: false,
+    startDate: null,
+    endDate: null,
+  },
 };
 
 // Action types
@@ -40,6 +45,7 @@ type AppAction =
   | { type: 'DELETE_PATTERN'; payload: { categoryId: string; patternId: string } }
   | { type: 'REORDER_PATTERNS'; payload: { categoryId: string; patterns: CategoryPattern[] } }
   | { type: 'DELETE_DESCRIPTION_MAPPING'; payload: string }
+  | { type: 'UPDATE_TIME_WINDOW_FILTER'; payload: { enabled: boolean; startDate: string | null; endDate: string | null } }
   | { type: 'IMPORT_PREFERENCES'; payload: Preferences }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'ADD_ERROR'; payload: string }
@@ -81,6 +87,11 @@ function appReducer(state: AppState, action: AppAction): AppState {
         excludedRepeatedExpenses: patternSet,
         manualOverrides: action.payload.manualOverrides,
         descriptionMappings: action.payload.descriptionMappings,
+        timeWindowFilter: action.payload.preferences.timeWindowFilter || {
+          enabled: false,
+          startDate: null,
+          endDate: null
+        },
         isLoading: false
       };
     }
@@ -403,12 +414,27 @@ function appReducer(state: AppState, action: AppAction): AppState {
         }
       };
 
+    case 'UPDATE_TIME_WINDOW_FILTER':
+      return {
+        ...state,
+        timeWindowFilter: action.payload,
+        preferences: {
+          ...state.preferences,
+          timeWindowFilter: action.payload
+        }
+      };
+
     case 'IMPORT_PREFERENCES':
       return {
         ...state,
         preferences: action.payload,
         categories: action.payload.categories,
-        rules: action.payload.rules
+        rules: action.payload.rules,
+        timeWindowFilter: action.payload.timeWindowFilter || {
+          enabled: false,
+          startDate: null,
+          endDate: null
+        }
       };
 
     case 'SET_LOADING':
@@ -638,6 +664,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'UPDATE_RULE', payload: rule });
     },
 
+    updateTimeWindowFilter: (filter: { enabled: boolean; startDate: string | null; endDate: string | null }) => {
+      dispatch({ type: 'UPDATE_TIME_WINDOW_FILTER', payload: filter });
+    },
+
     exportPreferences: () => {
       storage.exportPreferences(state.preferences);
     },
@@ -707,8 +737,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }), [state.categories, state.rules, state.preferences, state.transactions, state.excludedIds, state.manualOverrides, state.descriptionMappings, storage]);
 
+  // Compute filtered transactions based on time window filter
+  const filteredTransactions = useMemo(() => {
+    if (!state.timeWindowFilter.enabled || !state.timeWindowFilter.startDate || !state.timeWindowFilter.endDate) {
+      return state.transactions;
+    }
+
+    const startDate = new Date(state.timeWindowFilter.startDate);
+    const endDate = new Date(state.timeWindowFilter.endDate);
+
+    return state.transactions.filter(t => {
+      const txDate = t.date instanceof Date ? t.date : new Date(t.date);
+      // Start date is included, end date is excluded
+      return txDate >= startDate && txDate < endDate;
+    });
+  }, [state.transactions, state.timeWindowFilter]);
+
   const value: AppContextValue = {
     state,
+    filteredTransactions,
     actions
   };
 

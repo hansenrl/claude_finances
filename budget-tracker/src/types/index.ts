@@ -50,6 +50,11 @@ export interface Preferences {
   rules: CategorizationRule[];
   excludedTransactionSignatures: string[]; // Signatures of excluded transactions (persist across data clearing)
   excludedRepeatedExpensePatterns: string[]; // Merchant patterns of excluded repeated expenses
+  timeWindowFilter?: { // Optional for backward compatibility
+    enabled: boolean;
+    startDate: string | null; // ISO date string (YYYY-MM-DD)
+    endDate: string | null; // ISO date string (YYYY-MM-DD), excluded from range
+  };
   version: number; // Schema version
   lastModified: Date;
 }
@@ -117,11 +122,18 @@ export interface AppState {
   descriptionMappings: Map<string, string>; // description -> categoryId
   isLoading: boolean;
   errors: string[];
+  // Time window filter
+  timeWindowFilter: {
+    enabled: boolean;
+    startDate: string | null; // ISO date string (YYYY-MM-DD)
+    endDate: string | null; // ISO date string (YYYY-MM-DD), excluded from range
+  };
 }
 
 // App Context Value
 export interface AppContextValue {
   state: AppState;
+  filteredTransactions: Transaction[]; // Transactions filtered by time window
   actions: {
     uploadFiles: (files: File[]) => Promise<void>;
     categorizeTransaction: (id: string, categoryId: string) => void;
@@ -140,6 +152,8 @@ export interface AppContextValue {
     reorderPatterns: (categoryId: string, patterns: CategoryPattern[]) => void;
     // Description mapping management
     deleteDescriptionMapping: (description: string) => void;
+    // Time window filter
+    updateTimeWindowFilter: (filter: { enabled: boolean; startDate: string | null; endDate: string | null }) => void;
     exportPreferences: () => void;
     importPreferences: (file: File) => Promise<void>;
     exportData: () => void;

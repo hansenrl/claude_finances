@@ -8,20 +8,20 @@ import { formatCurrency } from '../lib/utils';
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 export function CategoryBreakdown() {
-  const { state } = useApp();
+  const { state, filteredTransactions } = useApp();
 
   const analytics = useMemo(() => {
-    if (state.transactions.length === 0) return null;
-    const calculator = new AnalyticsCalculator(state.transactions);
+    if (filteredTransactions.length === 0) return null;
+    const calculator = new AnalyticsCalculator(filteredTransactions);
     return calculator.computeAll();
-  }, [state.transactions]);
+  }, [filteredTransactions]);
 
   const categoryData = useMemo(() => {
     if (!analytics) return [];
 
     const data = Object.entries(analytics.categoryTotals).map(([categoryId, total]) => {
       const category = state.categories.find(c => c.id === categoryId);
-      const transactions = state.transactions.filter(t => {
+      const transactions = filteredTransactions.filter(t => {
         const txCategoryId = t.categoryId || 'uncategorized';
         return txCategoryId === categoryId && !t.isExcluded && t.type === 'DEBIT';
       });
@@ -37,7 +37,7 @@ export function CategoryBreakdown() {
     });
 
     return data.sort((a, b) => b.total - a.total);
-  }, [analytics, state.categories, state.transactions]);
+  }, [analytics, state.categories, filteredTransactions]);
 
   if (!analytics || categoryData.length === 0) {
     return (

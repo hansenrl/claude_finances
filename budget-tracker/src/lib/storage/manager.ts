@@ -83,6 +83,13 @@ export class StorageManager {
       if (!parsed.excludedRepeatedExpensePatterns) {
         parsed.excludedRepeatedExpensePatterns = [];
       }
+      if (!parsed.timeWindowFilter) {
+        parsed.timeWindowFilter = {
+          enabled: false,
+          startDate: null,
+          endDate: null
+        };
+      }
 
       // Handle version migrations
       if (parsed.version !== CURRENT_VERSION) {
@@ -274,6 +281,21 @@ export class StorageManager {
           if (!this.isValidPreferences(data)) {
             reject(new Error('Invalid preferences file structure'));
             return;
+          }
+
+          // Ensure backward compatibility for new fields
+          if (!data.excludedTransactionSignatures) {
+            data.excludedTransactionSignatures = [];
+          }
+          if (!data.excludedRepeatedExpensePatterns) {
+            data.excludedRepeatedExpensePatterns = [];
+          }
+          if (!data.timeWindowFilter) {
+            data.timeWindowFilter = {
+              enabled: false,
+              startDate: null,
+              endDate: null
+            };
           }
 
           resolve(data);

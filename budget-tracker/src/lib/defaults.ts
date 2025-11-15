@@ -187,6 +187,11 @@ export function getDefaultPreferences() {
     rules: DEFAULT_RULES,
     excludedTransactionSignatures: [],
     excludedRepeatedExpensePatterns: [],
+    timeWindowFilter: {
+      enabled: false,
+      startDate: null,
+      endDate: null
+    },
     version: 1,
     lastModified: new Date(),
   };

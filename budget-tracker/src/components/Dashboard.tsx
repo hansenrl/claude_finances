@@ -4,15 +4,15 @@ import { AnalyticsCalculator } from '../lib/analytics/calculator';
 import { formatCurrency, formatDate } from '../lib/utils';
 
 export function Dashboard() {
-  const { state } = useApp();
+  const { state, filteredTransactions } = useApp();
 
   const analytics = useMemo(() => {
-    if (state.transactions.length === 0) return null;
-    const calculator = new AnalyticsCalculator(state.transactions);
+    if (filteredTransactions.length === 0) return null;
+    const calculator = new AnalyticsCalculator(filteredTransactions);
     return calculator.computeAll();
-  }, [state.transactions]);
+  }, [filteredTransactions]);
 
-  if (!analytics || state.transactions.length === 0) {
+  if (!analytics || filteredTransactions.length === 0) {
     return (
       <div className="bg-white p-6 rounded-lg shadow">
         <h2 className="text-xl font-semibold mb-4">Dashboard</h2>
@@ -22,7 +22,7 @@ export function Dashboard() {
   }
 
   const { overallStats } = analytics;
-  const uncategorized = state.transactions.filter(t => !t.categoryId && !t.isExcluded).length;
+  const uncategorized = filteredTransactions.filter(t => !t.categoryId && !t.isExcluded).length;
 
   return (
     <div className="bg-white p-6 rounded-lg shadow">

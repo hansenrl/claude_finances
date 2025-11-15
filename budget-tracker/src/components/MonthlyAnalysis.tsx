@@ -9,13 +9,13 @@ import { format, parse } from 'date-fns';
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend);
 
 export function MonthlyAnalysis() {
-  const { state } = useApp();
+  const { state, filteredTransactions } = useApp();
 
   const analytics = useMemo(() => {
-    if (state.transactions.length === 0) return null;
-    const calculator = new AnalyticsCalculator(state.transactions);
+    if (filteredTransactions.length === 0) return null;
+    const calculator = new AnalyticsCalculator(filteredTransactions);
     return calculator.computeAll();
-  }, [state.transactions]);
+  }, [filteredTransactions]);
 
   const monthlyData = useMemo(() => {
     if (!analytics) return [];

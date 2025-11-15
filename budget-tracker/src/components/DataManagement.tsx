@@ -40,6 +40,33 @@ export function DataManagement() {
     }
   };
 
+  const formatDateForInput = (date: string | null): string => {
+    if (!date) return '';
+    // Ensure the date is in YYYY-MM-DD format
+    return date.split('T')[0];
+  };
+
+  const handleToggleFilter = () => {
+    actions.updateTimeWindowFilter({
+      ...state.timeWindowFilter,
+      enabled: !state.timeWindowFilter.enabled
+    });
+  };
+
+  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    actions.updateTimeWindowFilter({
+      ...state.timeWindowFilter,
+      startDate: e.target.value || null
+    });
+  };
+
+  const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    actions.updateTimeWindowFilter({
+      ...state.timeWindowFilter,
+      endDate: e.target.value || null
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* File Upload Section */}
@@ -101,6 +128,66 @@ export function DataManagement() {
             <p>Loaded {state.transactions.length} transactions</p>
           </div>
         )}
+      </div>
+
+      {/* Time Window Filter Section */}
+      <div className="bg-white p-6 rounded-lg shadow">
+        <h2 className="text-xl font-semibold mb-4">Time Window Filter</h2>
+
+        <div className="space-y-4">
+          {/* Toggle */}
+          <div className="flex items-center gap-3">
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={state.timeWindowFilter.enabled}
+                onChange={handleToggleFilter}
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+            <span className="font-medium text-gray-700">
+              {state.timeWindowFilter.enabled ? 'Filter Enabled' : 'Filter Disabled'}
+            </span>
+          </div>
+
+          {/* Date Range Inputs */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Start Date (included)
+              </label>
+              <input
+                type="date"
+                value={formatDateForInput(state.timeWindowFilter.startDate)}
+                onChange={handleStartDateChange}
+                disabled={!state.timeWindowFilter.enabled}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  !state.timeWindowFilter.enabled ? 'bg-gray-100 cursor-not-allowed' : ''
+                }`}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                End Date (excluded)
+              </label>
+              <input
+                type="date"
+                value={formatDateForInput(state.timeWindowFilter.endDate)}
+                onChange={handleEndDateChange}
+                disabled={!state.timeWindowFilter.enabled}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  !state.timeWindowFilter.enabled ? 'bg-gray-100 cursor-not-allowed' : ''
+                }`}
+              />
+            </div>
+          </div>
+
+          <p className="text-sm text-gray-600">
+            When enabled, only transactions within the specified date range will be included in charts and analytics.
+            The start date is inclusive and the end date is exclusive.
+          </p>
+        </div>
       </div>
 
       {/* Data Management Section */}

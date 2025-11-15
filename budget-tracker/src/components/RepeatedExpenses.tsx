@@ -4,14 +4,14 @@ import { AnalyticsCalculator } from '../lib/analytics/calculator';
 import { formatCurrency, formatDate } from '../lib/utils';
 
 export function RepeatedExpenses() {
-  const { state } = useApp();
+  const { state, filteredTransactions } = useApp();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const repeatedExpenses = useMemo(() => {
-    if (state.transactions.length === 0) return [];
-    const calculator = new AnalyticsCalculator(state.transactions);
+    if (filteredTransactions.length === 0) return [];
+    const calculator = new AnalyticsCalculator(filteredTransactions);
     return calculator.detectRepeatedExpenses();
-  }, [state.transactions]);
+  }, [filteredTransactions]);
 
   if (repeatedExpenses.length === 0) {
     return (
@@ -41,7 +41,7 @@ export function RepeatedExpenses() {
               <ExpenseRow
                 key={idx}
                 expense={expense}
-                transactions={state.transactions}
+                transactions={filteredTransactions}
                 isExpanded={expandedId === `sub-${idx}`}
                 onToggle={() => setExpandedId(expandedId === `sub-${idx}` ? null : `sub-${idx}`)}
               />
@@ -62,7 +62,7 @@ export function RepeatedExpenses() {
               <ExpenseRow
                 key={idx}
                 expense={expense}
-                transactions={state.transactions}
+                transactions={filteredTransactions}
                 isExpanded={expandedId === `other-${idx}`}
                 onToggle={() => setExpandedId(expandedId === `other-${idx}` ? null : `other-${idx}`)}
               />
