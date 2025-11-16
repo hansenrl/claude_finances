@@ -7,11 +7,18 @@ export function RepeatedExpenses() {
   const { state, filteredTransactions } = useApp();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [excludedExpanded, setExcludedExpanded] = useState(true);
-  const [selectedExcluded, setSelectedExcluded] = useState<Set<string>>(new Set());
 
+  // Detect repeated expenses from ALL transactions (including excluded ones)
+  // so we can show excluded repeated expenses in their own section
   const repeatedExpenses = useMemo(() => {
     if (filteredTransactions.length === 0) return [];
-    const calculator = new AnalyticsCalculator(filteredTransactions);
+    // Create a version of transactions with all items marked as not excluded
+    // so the calculator will include them in the repeated expense detection
+    const allTransactionsUnexcluded = filteredTransactions.map(t => ({
+      ...t,
+      isExcluded: false
+    }));
+    const calculator = new AnalyticsCalculator(allTransactionsUnexcluded);
     return calculator.detectRepeatedExpenses();
   }, [filteredTransactions]);
 
@@ -95,55 +102,15 @@ export function RepeatedExpenses() {
 
           {excludedExpanded && (
             <div className="mt-2 space-y-2">
-              {excludedExpenses.length > 1 && (
-                <div className="p-2 bg-blue-50 border border-blue-200 rounded flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={selectedExcluded.size === excludedExpenses.length}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedExcluded(new Set(excludedExpenses.map(e => e.merchantPattern)));
-                        } else {
-                          setSelectedExcluded(new Set());
-                        }
-                      }}
-                      className="w-4 h-4"
-                    />
-                    <span className="text-sm font-medium">
-                      {selectedExcluded.size > 0 ? `${selectedExcluded.size} selected` : 'Select all'}
-                    </span>
-                  </div>
-                  {selectedExcluded.size > 0 && (
-                    <UnexcludeButton
-                      selectedPatterns={selectedExcluded}
-                      expenses={excludedExpenses}
-                      onComplete={() => setSelectedExcluded(new Set())}
-                    />
-                  )}
-                </div>
-              )}
-              <div className="space-y-2">
-                {excludedExpenses.map((expense, idx) => (
-                  <ExcludedExpenseRow
-                    key={idx}
-                    expense={expense}
-                    transactions={filteredTransactions}
-                    isExpanded={expandedId === `excluded-${idx}`}
-                    onToggle={() => setExpandedId(expandedId === `excluded-${idx}` ? null : `excluded-${idx}`)}
-                    isSelected={selectedExcluded.has(expense.merchantPattern)}
-                    onSelectChange={(selected) => {
-                      const next = new Set(selectedExcluded);
-                      if (selected) {
-                        next.add(expense.merchantPattern);
-                      } else {
-                        next.delete(expense.merchantPattern);
-                      }
-                      setSelectedExcluded(next);
-                    }}
-                  />
-                ))}
-              </div>
+              {excludedExpenses.map((expense, idx) => (
+                <ExcludedExpenseRow
+                  key={idx}
+                  expense={expense}
+                  transactions={filteredTransactions}
+                  isExpanded={expandedId === `excluded-${idx}`}
+                  onToggle={() => setExpandedId(expandedId === `excluded-${idx}` ? null : `excluded-${idx}`)}
+                />
+              ))}
             </div>
           )}
         </div>
@@ -283,16 +250,12 @@ function ExcludedExpenseRow({
   expense,
   transactions,
   isExpanded,
-  onToggle,
-  isSelected,
-  onSelectChange
+  onToggle
 }: {
   expense: any;
   transactions: any[];
   isExpanded: boolean;
   onToggle: () => void;
-  isSelected: boolean;
-  onSelectChange: (selected: boolean) => void;
 }) {
   const { actions } = useApp();
   const expenseTransactions = transactions.filter(t =>
@@ -306,27 +269,18 @@ function ExcludedExpenseRow({
   return (
     <div className="border rounded bg-gray-50">
       <div className="p-3 flex items-center justify-between">
-        <div className="flex items-center gap-3 flex-1">
-          <input
-            type="checkbox"
-            checked={isSelected}
-            onChange={(e) => onSelectChange(e.target.checked)}
-            className="w-4 h-4"
-            onClick={(e) => e.stopPropagation()}
-          />
-          <div
-            className="flex-1 cursor-pointer"
-            onClick={onToggle}
-          >
-            <div className="font-semibold text-gray-700">{expense.merchantPattern}</div>
-            <div className="text-sm text-gray-600">
-              {expense.occurrences} occurrences • Avg: {formatCurrency(expense.averageAmount)}
-              {expense.estimatedMonthly && (
-                <span className="ml-2">
-                  ~{formatCurrency(expense.estimatedMonthly)}/month
-                </span>
-              )}
-            </div>
+        <div
+          className="flex-1 cursor-pointer"
+          onClick={onToggle}
+        >
+          <div className="font-semibold text-gray-700">{expense.merchantPattern}</div>
+          <div className="text-sm text-gray-600">
+            {expense.occurrences} occurrences • Avg: {formatCurrency(expense.averageAmount)}
+            {expense.estimatedMonthly && (
+              <span className="ml-2">
+                ~{formatCurrency(expense.estimatedMonthly)}/month
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -360,39 +314,5 @@ function ExcludedExpenseRow({
         </div>
       )}
     </div>
-  );
-}
-
-function UnexcludeButton({
-  selectedPatterns,
-  expenses,
-  onComplete
-}: {
-  selectedPatterns: Set<string>;
-  expenses: any[];
-  onComplete: () => void;
-}) {
-  const { actions } = useApp();
-
-  const handleBulkUnexclude = () => {
-    const count = selectedPatterns.size;
-    if (confirm(`Unexclude ${count} repeated expense${count > 1 ? 's' : ''}? They will be included in analytics again.`)) {
-      // Unexclude all selected patterns
-      expenses.forEach(expense => {
-        if (selectedPatterns.has(expense.merchantPattern)) {
-          actions.toggleRepeatedExpenseExclusion(expense.merchantPattern, expense.transactionIds);
-        }
-      });
-      onComplete();
-    }
-  };
-
-  return (
-    <button
-      onClick={handleBulkUnexclude}
-      className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 font-medium"
-    >
-      Unexclude Selected ({selectedPatterns.size})
-    </button>
   );
 }
