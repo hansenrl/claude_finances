@@ -25,6 +25,7 @@ const initialState: AppState = {
     startDate: null,
     endDate: null,
   },
+  selectedCategories: new Set(),
 };
 
 // Action types
@@ -47,6 +48,8 @@ type AppAction =
   | { type: 'REORDER_PATTERNS'; payload: { categoryId: string; patterns: CategoryPattern[] } }
   | { type: 'DELETE_DESCRIPTION_MAPPING'; payload: string }
   | { type: 'UPDATE_TIME_WINDOW_FILTER'; payload: { enabled: boolean; startDate: string | null; endDate: string | null } }
+  | { type: 'TOGGLE_CATEGORY_FILTER'; payload: string }
+  | { type: 'CLEAR_CATEGORY_FILTER' }
   | { type: 'IMPORT_PREFERENCES'; payload: Preferences }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'ADD_ERROR'; payload: string }
@@ -459,6 +462,25 @@ function appReducer(state: AppState, action: AppAction): AppState {
         }
       };
 
+    case 'TOGGLE_CATEGORY_FILTER': {
+      const nextSelectedCategories = new Set(state.selectedCategories);
+      if (nextSelectedCategories.has(action.payload)) {
+        nextSelectedCategories.delete(action.payload);
+      } else {
+        nextSelectedCategories.add(action.payload);
+      }
+      return {
+        ...state,
+        selectedCategories: nextSelectedCategories
+      };
+    }
+
+    case 'CLEAR_CATEGORY_FILTER':
+      return {
+        ...state,
+        selectedCategories: new Set()
+      };
+
     case 'IMPORT_PREFERENCES':
       return {
         ...state,
@@ -707,6 +729,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'UPDATE_TIME_WINDOW_FILTER', payload: filter });
     },
 
+    toggleCategoryFilter: (categoryId: string) => {
+      dispatch({ type: 'TOGGLE_CATEGORY_FILTER', payload: categoryId });
+    },
+
+    clearCategoryFilter: () => {
+      dispatch({ type: 'CLEAR_CATEGORY_FILTER' });
+    },
+
     exportPreferences: () => {
       storage.exportPreferences(state.preferences);
     },
@@ -776,27 +806,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }), [state.categories, state.rules, state.preferences, state.transactions, state.excludedIds, state.manualOverrides, state.descriptionMappings, storage]);
 
-  // Compute filtered transactions based on time window filter
+  // Compute filtered transactions based on time window filter and category filter
   const filteredTransactions = useMemo(() => {
-    if (!state.timeWindowFilter.enabled || !state.timeWindowFilter.startDate || !state.timeWindowFilter.endDate) {
-      return state.transactions;
+    let filtered = state.transactions;
+
+    // Apply time window filter
+    if (state.timeWindowFilter.enabled && state.timeWindowFilter.startDate && state.timeWindowFilter.endDate) {
+      // Parse dates as local dates (not UTC) by extracting year, month, day
+      const parseLocalDate = (dateStr: string): Date => {
+        const [year, month, day] = dateStr.split('-').map(Number);
+        return new Date(year, month - 1, day); // month is 0-indexed
+      };
+
+      const startDate = parseLocalDate(state.timeWindowFilter.startDate);
+      const endDate = parseLocalDate(state.timeWindowFilter.endDate);
+
+      filtered = filtered.filter(t => {
+        const txDate = t.date instanceof Date ? t.date : new Date(t.date);
+        // Start date is included, end date is excluded
+        return txDate >= startDate && txDate < endDate;
+      });
     }
 
-    // Parse dates as local dates (not UTC) by extracting year, month, day
-    const parseLocalDate = (dateStr: string): Date => {
-      const [year, month, day] = dateStr.split('-').map(Number);
-      return new Date(year, month - 1, day); // month is 0-indexed
-    };
+    // Apply category filter
+    if (state.selectedCategories.size > 0) {
+      filtered = filtered.filter(t => {
+        const categoryId = t.categoryId || 'uncategorized';
+        return state.selectedCategories.has(categoryId);
+      });
+    }
 
-    const startDate = parseLocalDate(state.timeWindowFilter.startDate);
-    const endDate = parseLocalDate(state.timeWindowFilter.endDate);
-
-    return state.transactions.filter(t => {
-      const txDate = t.date instanceof Date ? t.date : new Date(t.date);
-      // Start date is included, end date is excluded
-      return txDate >= startDate && txDate < endDate;
-    });
-  }, [state.transactions, state.timeWindowFilter]);
+    return filtered;
+  }, [state.transactions, state.timeWindowFilter, state.selectedCategories]);
 
   const value: AppContextValue = {
     state,

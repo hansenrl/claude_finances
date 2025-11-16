@@ -8,7 +8,7 @@ import { formatCurrency } from '../lib/utils';
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 export function CategoryBreakdown() {
-  const { state, filteredTransactions } = useApp();
+  const { state, filteredTransactions, actions } = useApp();
 
   const analytics = useMemo(() => {
     if (filteredTransactions.length === 0) return null;
@@ -87,9 +87,29 @@ export function CategoryBreakdown() {
     }
   };
 
+  const hasActiveFilter = state.selectedCategories.size > 0;
+
   return (
     <div className="bg-white p-6 rounded-lg shadow">
-      <h2 className="text-xl font-semibold mb-4">Category Breakdown</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold">Category Breakdown</h2>
+        {hasActiveFilter && (
+          <button
+            onClick={() => actions.clearCategoryFilter()}
+            className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Clear Filter ({state.selectedCategories.size})
+          </button>
+        )}
+      </div>
+
+      {hasActiveFilter && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
+          <p className="text-sm text-blue-900">
+            Filtering by {state.selectedCategories.size} categor{state.selectedCategories.size === 1 ? 'y' : 'ies'}. Click categories below to add/remove from filter.
+          </p>
+        </div>
+      )}
 
       {/* Table */}
       <div className="mb-6 overflow-x-auto">
@@ -103,20 +123,36 @@ export function CategoryBreakdown() {
             </tr>
           </thead>
           <tbody>
-            {categoryData.map(cat => (
-              <tr key={cat.id} className="border-b">
-                <td className="p-2 flex items-center">
-                  <span
-                    className="inline-block w-3 h-3 rounded-full mr-2"
-                    style={{ backgroundColor: cat.color }}
-                  />
-                  {cat.name}
-                </td>
-                <td className="p-2 text-right">{cat.count}</td>
-                <td className="p-2 text-right font-semibold">{formatCurrency(cat.total)}</td>
-                <td className="p-2 text-right">{cat.percentage.toFixed(1)}%</td>
-              </tr>
-            ))}
+            {categoryData.map(cat => {
+              const isSelected = state.selectedCategories.has(cat.id);
+              return (
+                <tr
+                  key={cat.id}
+                  onClick={() => actions.toggleCategoryFilter(cat.id)}
+                  className={`border-b cursor-pointer transition-colors ${
+                    isSelected
+                      ? 'bg-blue-100 hover:bg-blue-200'
+                      : 'hover:bg-gray-50'
+                  }`}
+                >
+                  <td className="p-2 flex items-center">
+                    <span
+                      className="inline-block w-3 h-3 rounded-full mr-2"
+                      style={{ backgroundColor: cat.color }}
+                    />
+                    <span className={isSelected ? 'font-semibold' : ''}>
+                      {cat.name}
+                    </span>
+                    {isSelected && (
+                      <span className="ml-2 text-blue-600">✓</span>
+                    )}
+                  </td>
+                  <td className="p-2 text-right">{cat.count}</td>
+                  <td className="p-2 text-right font-semibold">{formatCurrency(cat.total)}</td>
+                  <td className="p-2 text-right">{cat.percentage.toFixed(1)}%</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
