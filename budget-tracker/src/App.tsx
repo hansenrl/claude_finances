@@ -5,6 +5,7 @@ import { Dashboard } from './components/Dashboard';
 import { CategoryBreakdown } from './components/CategoryBreakdown';
 import { MonthlyAnalysis } from './components/MonthlyAnalysis';
 import { RepeatedExpenses } from './components/RepeatedExpenses';
+import { ExcludedRepeatedExpenses } from './components/ExcludedRepeatedExpenses';
 import { TransactionList } from './components/TransactionList';
 import { Settings } from './components/Settings';
 import { DataManagement } from './components/DataManagement';
@@ -46,6 +47,11 @@ function AppContent() {
               <CategoryBreakdown />
               <RepeatedExpenses />
             </div>
+
+            {/* Excluded Repeated Expenses */}
+            <ErrorBoundary>
+              <ExcludedRepeatedExpenses />
+            </ErrorBoundary>
 
             {/* Monthly Analysis */}
             <ErrorBoundary>

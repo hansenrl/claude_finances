@@ -29,7 +29,11 @@ export function TransactionList() {
     }
 
     if (selectedCategory) {
-      filtered = filtered.filter(t => t.categoryId === selectedCategory);
+      if (selectedCategory === '__uncategorized__') {
+        filtered = filtered.filter(t => !t.categoryId);
+      } else {
+        filtered = filtered.filter(t => t.categoryId === selectedCategory);
+      }
     }
 
     // Then, sort the filtered results
@@ -107,6 +111,7 @@ export function TransactionList() {
             style={{ width: '200px' }}
           >
             <option value="">All Categories</option>
+            <option value="__uncategorized__">Uncategorized</option>
             {[...state.categories]
               .sort((a, b) => a.name.localeCompare(b.name))
               .map(cat => (
