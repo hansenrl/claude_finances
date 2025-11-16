@@ -12,6 +12,7 @@ export function TransactionList() {
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
 
   const parentRef = React.useRef<HTMLDivElement>(null);
 
@@ -25,6 +26,10 @@ export function TransactionList() {
       filtered = filtered.filter(t =>
         t.description.toLowerCase().includes(query)
       );
+    }
+
+    if (selectedCategory) {
+      filtered = filtered.filter(t => t.categoryId === selectedCategory);
     }
 
     // Then, sort the filtered results
@@ -54,7 +59,7 @@ export function TransactionList() {
     });
 
     return sorted;
-  }, [filteredTransactions, state.categories, sortField, sortDirection, searchQuery]);
+  }, [filteredTransactions, state.categories, sortField, sortDirection, searchQuery, selectedCategory]);
 
   const virtualizer = useVirtualizer({
     count: filteredAndSortedTransactions.length,
@@ -86,11 +91,31 @@ export function TransactionList() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold">
           Transactions ({filteredAndSortedTransactions.length}
-          {searchQuery && filteredTransactions.filter(t => t.type === 'DEBIT').length !== filteredAndSortedTransactions.length &&
+          {(searchQuery || selectedCategory) && filteredTransactions.filter(t => t.type === 'DEBIT').length !== filteredAndSortedTransactions.length &&
             ` of ${filteredTransactions.filter(t => t.type === 'DEBIT').length}`})
         </h2>
 
         <div className="flex items-center space-x-2">
+          <label htmlFor="category-filter" className="text-sm text-gray-600">
+            Category:
+          </label>
+          <select
+            id="category-filter"
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            style={{ width: '200px' }}
+          >
+            <option value="">All Categories</option>
+            {[...state.categories]
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map(cat => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+          </select>
+
           <label htmlFor="search-transactions" className="text-sm text-gray-600">
             Search:
           </label>
