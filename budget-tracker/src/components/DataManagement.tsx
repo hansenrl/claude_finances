@@ -196,7 +196,7 @@ export function DataManagement() {
 
         <div className="space-y-4">
           <div>
-            <h3 className="font-semibold mb-3">Export</h3>
+            <h3 className="font-semibold mb-3">Export & Share</h3>
             <div className="space-y-2">
               <button
                 onClick={actions.exportPreferences}
@@ -210,9 +210,15 @@ export function DataManagement() {
               >
                 Export All Data
               </button>
+              <button
+                onClick={actions.generateShareableURL}
+                className="w-full md:w-auto px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 ml-0 md:ml-2"
+              >
+                🔗 Generate Shareable URL
+              </button>
             </div>
             <p className="text-sm text-gray-600 mt-2">
-              Export your categories, patterns, rules, and settings to a JSON file.
+              Export your categories, patterns, rules, and settings to a JSON file, or generate a shareable URL that includes all your preferences (but not your transactions).
             </p>
           </div>
 

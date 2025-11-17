@@ -7,6 +7,7 @@ import { CategorizationEngine } from '../lib/categorization/engine';
 import { getDefaultPreferences } from '../lib/defaults';
 import { generateSampleData } from '../lib/sampleData';
 import { generateTransactionSignatureSync } from '../lib/utils';
+import { extractSettingsFromURL, clearSettingsFromURL, generateShareableURL, type ExportableSettings } from '../lib/urlEncoder';
 
 // Initial state
 const initialState: AppState = {
@@ -533,10 +534,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Load data on mount
   useEffect(() => {
+    // First, check if there are settings in the URL
+    const urlSettings = extractSettingsFromURL();
+
+    let preferences: Preferences;
+    let descriptionMappings: Map<string, string>;
+    let manualOverrides: Map<string, string>;
+
+    if (urlSettings) {
+      // Import settings from URL
+      preferences = urlSettings.preferences;
+      descriptionMappings = new Map(Object.entries(urlSettings.descriptionMappings));
+      manualOverrides = urlSettings.manualOverrides
+        ? new Map(Object.entries(urlSettings.manualOverrides))
+        : new Map();
+
+      // Save the imported settings to localStorage
+      storage.savePreferences(preferences);
+      storage.saveDescriptionMappings(descriptionMappings);
+      if (manualOverrides.size > 0) {
+        storage.saveManualOverrides(manualOverrides);
+      }
+
+      // Clear the URL
+      clearSettingsFromURL();
+    } else {
+      // Load from localStorage as usual
+      preferences = storage.loadPreferences() || getDefaultPreferences();
+      manualOverrides = storage.loadManualOverrides();
+      descriptionMappings = storage.loadDescriptionMappings();
+    }
+
     const transactions = storage.loadTransactions();
-    const preferences = storage.loadPreferences() || getDefaultPreferences();
-    const manualOverrides = storage.loadManualOverrides();
-    const descriptionMappings = storage.loadDescriptionMappings();
 
     // Apply manual overrides to loaded transactions (exclusions are handled by LOAD_DATA based on signatures)
     const updatedTransactions = transactions.map(t => ({
@@ -749,6 +778,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dispatch({
           type: 'ADD_ERROR',
           payload: error instanceof Error ? error.message : 'Error importing preferences'
+        });
+      }
+    },
+
+    generateShareableURL: () => {
+      try {
+        const settings: ExportableSettings = {
+          preferences: state.preferences,
+          descriptionMappings: Object.fromEntries(state.descriptionMappings),
+          manualOverrides: state.manualOverrides.size > 0
+            ? Object.fromEntries(state.manualOverrides)
+            : undefined
+        };
+
+        const url = generateShareableURL(settings);
+
+        // Copy to clipboard
+        navigator.clipboard.writeText(url).then(() => {
+          alert('Shareable URL copied to clipboard!\n\nAnyone who visits this URL will get your settings and preferences (but not your transactions).');
+        }).catch(() => {
+          // Fallback: show the URL in a prompt
+          prompt('Copy this shareable URL:', url);
+        });
+      } catch (error) {
+        dispatch({
+          type: 'ADD_ERROR',
+          payload: error instanceof Error ? error.message : 'Error generating shareable URL'
         });
       }
     },
