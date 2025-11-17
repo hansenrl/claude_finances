@@ -128,6 +128,8 @@ export interface AppState {
     startDate: string | null; // ISO date string (YYYY-MM-DD)
     endDate: string | null; // ISO date string (YYYY-MM-DD), excluded from range
   };
+  // Category filter
+  selectedCategories: Set<string>; // Set of category IDs to filter by (empty = all categories)
 }
 
 // App Context Value
@@ -155,6 +157,9 @@ export interface AppContextValue {
     deleteDescriptionMapping: (description: string) => void;
     // Time window filter
     updateTimeWindowFilter: (filter: { enabled: boolean; startDate: string | null; endDate: string | null }) => void;
+    // Category filter
+    toggleCategoryFilter: (categoryId: string) => void;
+    clearCategoryFilter: () => void;
     exportPreferences: () => void;
     importPreferences: (file: File) => Promise<void>;
     exportData: () => void;
