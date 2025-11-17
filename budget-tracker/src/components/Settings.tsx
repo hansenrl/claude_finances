@@ -86,6 +86,7 @@ export function Settings() {
                   onUpdatePattern={(pattern) => actions.updatePattern(category.id, pattern)}
                   onDeletePattern={(patternId) => actions.deletePattern(category.id, patternId)}
                   onDeleteCategory={() => actions.deleteCategory(category.id)}
+                  onRenameCategory={(newName, newColor) => actions.updateCategory({ ...category, name: newName, color: newColor })}
                 />
               ))}
           </div>
@@ -174,6 +175,7 @@ interface CategoryCardProps {
   onUpdatePattern: (pattern: CategoryPattern) => void;
   onDeletePattern: (patternId: string) => void;
   onDeleteCategory: () => void;
+  onRenameCategory: (newName: string, newColor: string) => void;
 }
 
 function CategoryCard({
@@ -183,9 +185,72 @@ function CategoryCard({
   onAddPattern,
   onUpdatePattern,
   onDeletePattern,
-  onDeleteCategory
+  onDeleteCategory,
+  onRenameCategory
 }: CategoryCardProps) {
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState(category.name);
+  const [editedColor, setEditedColor] = useState(category.color);
   const patternCount = category.patterns.length;
+
+  const handleSaveRename = () => {
+    if (editedName.trim()) {
+      onRenameCategory(editedName.trim(), editedColor);
+      setIsEditingName(false);
+    }
+  };
+
+  if (isEditingName) {
+    return (
+      <div className="border rounded overflow-hidden">
+        <div className="p-3 bg-gray-50">
+          <div className="flex items-center space-x-2 mb-3">
+            <input
+              type="color"
+              value={editedColor}
+              onChange={(e) => setEditedColor(e.target.value)}
+              className="w-8 h-8 rounded cursor-pointer"
+            />
+            <input
+              type="text"
+              value={editedName}
+              onChange={(e) => setEditedName(e.target.value)}
+              className="flex-1 px-3 py-2 border rounded"
+              placeholder="Category name"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSaveRename();
+                } else if (e.key === 'Escape') {
+                  setEditedName(category.name);
+                  setEditedColor(category.color);
+                  setIsEditingName(false);
+                }
+              }}
+            />
+          </div>
+          <div className="flex space-x-2">
+            <button
+              onClick={handleSaveRename}
+              className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+            >
+              Save
+            </button>
+            <button
+              onClick={() => {
+                setEditedName(category.name);
+                setEditedColor(category.color);
+                setIsEditingName(false);
+              }}
+              className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 text-sm"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="border rounded overflow-hidden">
@@ -200,29 +265,31 @@ function CategoryCard({
             style={{ backgroundColor: category.color }}
           />
           <span className="font-medium">{category.name}</span>
-          {category.isDefault && (
-            <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
-              Default
-            </span>
-          )}
           <span className="ml-3 text-sm text-gray-600">
             {patternCount} {patternCount === 1 ? 'pattern' : 'patterns'}
           </span>
         </div>
         <div className="flex items-center space-x-2">
-          {category.isCustom && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (confirm(`Delete category "${category.name}"?`)) {
-                  onDeleteCategory();
-                }
-              }}
-              className="text-red-600 hover:text-red-800 text-sm px-2 py-1"
-            >
-              Delete
-            </button>
-          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsEditingName(true);
+            }}
+            className="text-blue-600 hover:text-blue-800 text-sm px-2 py-1"
+          >
+            Rename
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (confirm(`Delete category "${category.name}"?`)) {
+                onDeleteCategory();
+              }
+            }}
+            className="text-red-600 hover:text-red-800 text-sm px-2 py-1"
+          >
+            Delete
+          </button>
           <span className="text-gray-400">
             {isExpanded ? '▼' : '▶'}
           </span>
@@ -397,11 +464,6 @@ function PatternRow({ pattern, onUpdate, onDelete }: PatternRowProps) {
             <code className="text-sm font-mono text-blue-600 truncate">
               {pattern.pattern}
             </code>
-            {pattern.isDefault && (
-              <span className="text-xs bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded flex-shrink-0">
-                Default
-              </span>
-            )}
             <span className="text-xs text-gray-500 flex-shrink-0">
               Priority: {pattern.priority}
             </span>
@@ -462,7 +524,6 @@ function NewPatternForm({ categoryId, onAdd }: NewPatternFormProps) {
         pattern: pattern.trim(),
         priority: parseInt(priority) || 50,
         enabled: true,
-        isDefault: false,
         description: description.trim() || undefined
       });
       setPattern('');
@@ -557,8 +618,6 @@ function NewCategoryForm({ onAdd }: { onAdd: (category: any) => void }) {
         name: name.trim(),
         color,
         patterns: [],
-        isCustom: true,
-        isDefault: false
       });
       setName('');
       setColor('#3b82f6');

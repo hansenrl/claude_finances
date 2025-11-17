@@ -21,7 +21,6 @@ export interface CategoryPattern {
   pattern: string; // Regex pattern
   priority: number; // Lower = higher priority (matches first)
   enabled: boolean;
-  isDefault: boolean; // Built-in pattern vs user-added
   description?: string; // Optional label/description
 }
 
@@ -31,8 +30,6 @@ export interface Category {
   name: string;
   color: string; // Hex color for charts
   patterns: CategoryPattern[]; // Regex patterns with metadata
-  isCustom: boolean;
-  isDefault: boolean; // Built-in category
 }
 
 // Categorization Rule
