@@ -51,6 +51,8 @@ export function CategoryBreakdown() {
   const categoryData = useMemo(() => {
     if (!tableAnalytics) return [];
 
+    const monthCount = tableAnalytics.overallStats.monthCount || 1;
+
     const data = Object.entries(tableAnalytics.categoryTotals).map(([categoryId, total]) => {
       const category = state.categories.find(c => c.id === categoryId);
       const transactions = timeFilteredTransactions.filter(t => {
@@ -64,6 +66,7 @@ export function CategoryBreakdown() {
         color: category?.color || '#64748b',
         total,
         count: transactions.length,
+        avgMonthly: total / monthCount,
         percentage: (total / tableAnalytics.overallStats.totalDebits) * 100
       };
     });
@@ -176,6 +179,7 @@ export function CategoryBreakdown() {
               <th className="p-2 text-left">Category</th>
               <th className="p-2 text-right">Transactions</th>
               <th className="p-2 text-right">Total</th>
+              <th className="p-2 text-right">Avg Monthly</th>
               <th className="p-2 text-right">Percentage</th>
             </tr>
           </thead>
@@ -206,6 +210,7 @@ export function CategoryBreakdown() {
                   </td>
                   <td className="p-2 text-right">{cat.count}</td>
                   <td className="p-2 text-right font-semibold">{formatCurrency(cat.total)}</td>
+                  <td className="p-2 text-right text-blue-600">{formatCurrency(cat.avgMonthly)}</td>
                   <td className="p-2 text-right">{cat.percentage.toFixed(1)}%</td>
                 </tr>
               );
