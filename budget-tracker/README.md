@@ -161,10 +161,11 @@ Supported format (Discover card format):
 - **Chart.js** + **react-chartjs-2** - Data visualizations
 - **@tanstack/react-virtual** - Virtual scrolling for performance
 - **date-fns** - Date formatting and manipulation
-- **ofx-data-extractor** - QFX/OFX file parsing
 - **papaparse** - CSV file parsing
 - **Tailwind CSS v4** - Styling
 - **vite-plugin-singlefile** - Single HTML output
+
+QFX/OFX file parsing is handled by a custom browser-compatible parser using the DOM Parser API.
 
 ### Architecture
 - **React Context API** - State management
@@ -301,5 +302,5 @@ MIT License - see LICENSE file for details
 
 - Built with React, TypeScript, and Vite
 - Charts powered by Chart.js
-- Financial data parsing by ofx-data-extractor and papaparse
+- Financial data parsing by custom OFX parser and papaparse
 - Styling with Tailwind CSS
