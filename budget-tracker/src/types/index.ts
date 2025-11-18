@@ -159,6 +159,7 @@ export interface AppContextValue {
     clearCategoryFilter: () => void;
     exportPreferences: () => void;
     importPreferences: (file: File) => Promise<void>;
+    importAllData: (file: File) => Promise<void>;
     generateShareableURL: () => void;
     exportData: () => void;
     clearTransactions: () => void;

@@ -52,6 +52,7 @@ type AppAction =
   | { type: 'TOGGLE_CATEGORY_FILTER'; payload: string }
   | { type: 'CLEAR_CATEGORY_FILTER' }
   | { type: 'IMPORT_PREFERENCES'; payload: Preferences }
+  | { type: 'IMPORT_ALL_DATA'; payload: { transactions: Transaction[]; preferences: Preferences; excludedIds: Set<string>; excludedRepeatedExpenses: Set<string>; manualOverrides: Map<string, string>; descriptionMappings: Map<string, string> } }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'ADD_ERROR'; payload: string }
   | { type: 'CLEAR_ERRORS' }
@@ -495,6 +496,38 @@ function appReducer(state: AppState, action: AppAction): AppState {
         }
       };
 
+    case 'IMPORT_ALL_DATA': {
+      // Apply exclusions to imported transactions based on signatures
+      const signatureSet = new Set(action.payload.preferences.excludedTransactionSignatures || []);
+      const transactionsWithExclusions = action.payload.transactions.map(t => {
+        const signature = generateTransactionSignatureSync(t.date, t.amount, t.description);
+        const isExcluded = signatureSet.has(signature);
+
+        return {
+          ...t,
+          isExcluded
+        };
+      });
+
+      return {
+        ...state,
+        transactions: transactionsWithExclusions,
+        preferences: action.payload.preferences,
+        categories: action.payload.preferences.categories,
+        rules: action.payload.preferences.rules,
+        excludedIds: action.payload.excludedIds,
+        excludedRepeatedExpenses: action.payload.excludedRepeatedExpenses,
+        manualOverrides: action.payload.manualOverrides,
+        descriptionMappings: action.payload.descriptionMappings,
+        timeWindowFilter: action.payload.preferences.timeWindowFilter || {
+          enabled: false,
+          startDate: null,
+          endDate: null
+        },
+        isLoading: false
+      };
+    }
+
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
 
@@ -778,6 +811,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dispatch({
           type: 'ADD_ERROR',
           payload: error instanceof Error ? error.message : 'Error importing preferences'
+        });
+      }
+    },
+
+    importAllData: async (file: File) => {
+      try {
+        const data = await storage.importAllData(file);
+        dispatch({ type: 'IMPORT_ALL_DATA', payload: data });
+      } catch (error) {
+        dispatch({
+          type: 'ADD_ERROR',
+          payload: error instanceof Error ? error.message : 'Error importing data'
         });
       }
     },

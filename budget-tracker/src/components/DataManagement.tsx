@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 export function DataManagement() {
   const { state, actions } = useApp();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const allDataFileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -37,6 +38,13 @@ export function DataManagement() {
     const file = e.target.files?.[0];
     if (file) {
       actions.importPreferences(file);
+    }
+  };
+
+  const handleImportAllData = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      actions.importAllData(file);
     }
   };
 
@@ -224,21 +232,36 @@ export function DataManagement() {
 
           <div>
             <h3 className="font-semibold mb-3">Import</h3>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".json"
-              onChange={handleImportPreferences}
-              className="hidden"
-            />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-            >
-              Import Preferences
-            </button>
+            <div className="space-y-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json"
+                onChange={handleImportPreferences}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full md:w-auto px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+              >
+                Import Preferences
+              </button>
+              <input
+                ref={allDataFileInputRef}
+                type="file"
+                accept=".json"
+                onChange={handleImportAllData}
+                className="hidden"
+              />
+              <button
+                onClick={() => allDataFileInputRef.current?.click()}
+                className="w-full md:w-auto px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 ml-0 md:ml-2"
+              >
+                Import Data and Preferences
+              </button>
+            </div>
             <p className="text-sm text-gray-600 mt-2">
-              Import previously exported preferences.
+              Import previously exported preferences or complete data exports (including transactions).
             </p>
           </div>
 

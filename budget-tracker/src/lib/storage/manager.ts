@@ -309,6 +309,77 @@ export class StorageManager {
   }
 
   /**
+   * Import all data (transactions + preferences + state) from file
+   */
+  async importAllData(file: File): Promise<{
+    transactions: Transaction[];
+    preferences: Preferences;
+    excludedIds: Set<string>;
+    excludedRepeatedExpenses: Set<string>;
+    manualOverrides: Map<string, string>;
+    descriptionMappings: Map<string, string>;
+  }> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target?.result as string, this.dateReviver);
+
+          // Validate that this is a full data export
+          if (!data.transactions || !data.preferences) {
+            reject(new Error('Invalid data file: missing transactions or preferences'));
+            return;
+          }
+
+          // Validate preferences structure
+          if (!this.isValidPreferences(data.preferences)) {
+            reject(new Error('Invalid preferences structure in data file'));
+            return;
+          }
+
+          // Ensure backward compatibility for new fields
+          if (!data.preferences.excludedTransactionSignatures) {
+            data.preferences.excludedTransactionSignatures = [];
+          }
+          if (!data.preferences.excludedRepeatedExpensePatterns) {
+            data.preferences.excludedRepeatedExpensePatterns = [];
+          }
+          if (!data.preferences.timeWindowFilter) {
+            data.preferences.timeWindowFilter = {
+              enabled: false,
+              startDate: null,
+              endDate: null
+            };
+          }
+
+          // Convert arrays and objects back to Sets and Maps
+          const excludedIds = new Set<string>(data.excludedIds || []);
+          const excludedRepeatedExpenses = new Set<string>(data.excludedRepeatedExpenses || []);
+          const manualOverrides = new Map<string, string>(
+            data.manualOverrides ? Object.entries(data.manualOverrides) : []
+          );
+          const descriptionMappings = new Map<string, string>(
+            data.descriptionMappings ? Object.entries(data.descriptionMappings) : []
+          );
+
+          resolve({
+            transactions: data.transactions,
+            preferences: data.preferences,
+            excludedIds,
+            excludedRepeatedExpenses,
+            manualOverrides,
+            descriptionMappings
+          });
+        } catch (err) {
+          reject(new Error(`Error parsing data file: ${err}`));
+        }
+      };
+      reader.onerror = () => reject(new Error('Error reading file'));
+      reader.readAsText(file);
+    });
+  }
+
+  /**
    * Clear only transaction data from localStorage
    * Note: Exclusion signatures are now stored in preferences, so they persist across transaction clearing
    */
