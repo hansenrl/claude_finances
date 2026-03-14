@@ -4,7 +4,7 @@ import { AnalyticsCalculator } from '../lib/analytics/calculator';
 import { formatCurrency, formatDate } from '../lib/utils';
 
 export function Dashboard() {
-  const { state, filteredTransactions } = useApp();
+  const { filteredTransactions } = useApp();
 
   const analytics = useMemo(() => {
     if (filteredTransactions.length === 0) return null;
@@ -28,11 +28,17 @@ export function Dashboard() {
     <div className="bg-white p-6 rounded-lg shadow">
       <h2 className="text-xl font-semibold mb-4">Dashboard</h2>
 
-      <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <StatCard
-          label="Total Expenses"
-          value={formatCurrency(overallStats.totalDebits)}
+          label="Net Expenses"
+          value={formatCurrency(overallStats.net)}
+          subtitle={overallStats.totalCredits > 0 ? `${formatCurrency(overallStats.totalDebits)} gross - ${formatCurrency(overallStats.totalCredits)} refunds` : undefined}
           color="text-red-600"
+        />
+        <StatCard
+          label="Refunds"
+          value={formatCurrency(overallStats.totalCredits)}
+          color="text-green-600"
         />
         <StatCard
           label="Avg Monthly"
@@ -75,15 +81,17 @@ export function Dashboard() {
   );
 }
 
-function StatCard({ label, value, color = 'text-gray-900' }: {
+function StatCard({ label, value, subtitle, color = 'text-gray-900' }: {
   label: string;
   value: string;
+  subtitle?: string;
   color?: string;
 }) {
   return (
     <div className="bg-gray-50 p-4 rounded">
       <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
       <p className={`text-lg font-semibold ${color} mt-1`}>{value}</p>
+      {subtitle && <p className="text-xs text-gray-400 mt-1">{subtitle}</p>}
     </div>
   );
 }

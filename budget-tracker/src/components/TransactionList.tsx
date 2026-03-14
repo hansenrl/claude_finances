@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useApp } from '../context/AppContext';
-import type { Transaction } from '../types';
 import { formatCurrency, formatDate } from '../lib/utils';
 
 type SortField = 'date' | 'description' | 'amount' | 'category';
@@ -18,8 +17,7 @@ export function TransactionList() {
 
   // Filter and sort transactions
   const filteredAndSortedTransactions = useMemo(() => {
-    // Always filter to expenses only (DEBIT transactions)
-    let filtered = filteredTransactions.filter(t => t.type === 'DEBIT');
+    let filtered = [...filteredTransactions];
 
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -95,8 +93,8 @@ export function TransactionList() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold">
           Transactions ({filteredAndSortedTransactions.length}
-          {(searchQuery || selectedCategory) && filteredTransactions.filter(t => t.type === 'DEBIT').length !== filteredAndSortedTransactions.length &&
-            ` of ${filteredTransactions.filter(t => t.type === 'DEBIT').length}`})
+          {(searchQuery || selectedCategory) && filteredTransactions.length !== filteredAndSortedTransactions.length &&
+            ` of ${filteredTransactions.length}`})
         </h2>
 
         <div className="flex items-center space-x-2">

@@ -32,12 +32,16 @@ export class AnalyticsCalculator {
     const summaries = Array.from(byMonth.entries()).map(([month, txns]) => {
       const nonExcluded = txns.filter(t => !t.isExcluded);
       const expenses = nonExcluded.filter(t => t.type === 'DEBIT');
+      const credits = nonExcluded.filter(t => t.type === 'CREDIT');
+
+      const totalDebits = this.sumAmounts(expenses);
+      const totalCredits = Math.abs(this.sumAmounts(credits));
 
       return {
         month,
-        totalDebits: this.sumAmounts(expenses),
-        totalCredits: 0, // Not tracking income
-        net: 0, // Not tracking income
+        totalDebits,
+        totalCredits,
+        net: totalDebits - totalCredits,
         categoryTotals: this.computeCategoryTotalsForTransactions(nonExcluded),
         transactionCount: nonExcluded.length
       };
@@ -92,8 +96,11 @@ export class AnalyticsCalculator {
   computeOverallStats() {
     const nonExcluded = this.transactions.filter(t => !t.isExcluded);
     const expenses = nonExcluded.filter(t => t.type === 'DEBIT');
+    const credits = nonExcluded.filter(t => t.type === 'CREDIT');
 
     const totalDebits = Math.abs(this.sumAmounts(expenses));
+    const totalCredits = Math.abs(this.sumAmounts(credits));
+    const net = totalDebits - totalCredits;
 
     // Calculate date range
     let dateRange: { start: Date; end: Date } | null = null;
@@ -111,12 +118,12 @@ export class AnalyticsCalculator {
 
     return {
       totalDebits,
-      totalCredits: 0, // Not tracking income
-      net: 0, // Not tracking income
+      totalCredits,
+      net,
       transactionCount: nonExcluded.length,
       dateRange,
       monthCount,
-      averageMonthlyExpenses: monthCount > 0 ? totalDebits / monthCount : 0
+      averageMonthlyExpenses: monthCount > 0 ? net / monthCount : 0
     };
   }
 
@@ -203,12 +210,15 @@ export class AnalyticsCalculator {
   private computeCategoryTotalsForTransactions(transactions: Transaction[]): Record<string, number> {
     const totals: Record<string, number> = {};
 
-    transactions
-      .filter(t => t.type === 'DEBIT') // Only count expenses
-      .forEach(t => {
-        const categoryId = t.categoryId || 'uncategorized';
+    transactions.forEach(t => {
+      const categoryId = t.categoryId || 'uncategorized';
+      if (t.type === 'DEBIT') {
         totals[categoryId] = (totals[categoryId] || 0) + Math.abs(t.amount);
-      });
+      } else if (t.type === 'CREDIT') {
+        // Refunds subtract from the category total
+        totals[categoryId] = (totals[categoryId] || 0) - Math.abs(t.amount);
+      }
+    });
 
     return totals;
   }
