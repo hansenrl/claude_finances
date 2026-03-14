@@ -37,13 +37,22 @@ export function MonthlyAnalysis() {
   // Trend line data
   const lineData = {
     labels: monthlyData.map(m => m.monthLabel),
-    datasets: [{
-      label: 'Monthly Expenses',
-      data: monthlyData.map(m => Math.abs(m.totalDebits)),
-      borderColor: '#ef4444',
-      backgroundColor: 'rgba(239, 68, 68, 0.1)',
-      tension: 0.3
-    }]
+    datasets: [
+      {
+        label: 'Gross Expenses',
+        data: monthlyData.map(m => Math.abs(m.totalDebits)),
+        borderColor: '#ef4444',
+        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+        tension: 0.3
+      },
+      {
+        label: 'Net (after refunds)',
+        data: monthlyData.map(m => Math.abs(m.net)),
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        tension: 0.3
+      }
+    ]
   };
 
   // Stacked bar data by category
@@ -108,6 +117,8 @@ export function MonthlyAnalysis() {
             <tr>
               <th className="p-2 text-left">Month</th>
               <th className="p-2 text-right">Expenses</th>
+              <th className="p-2 text-right">Refunds</th>
+              <th className="p-2 text-right">Net</th>
               <th className="p-2 text-right">Transactions</th>
             </tr>
           </thead>
@@ -116,6 +127,8 @@ export function MonthlyAnalysis() {
               <tr key={month.month} className="border-b">
                 <td className="p-2">{month.monthLabel}</td>
                 <td className="p-2 text-right text-red-600">{formatCurrency(Math.abs(month.totalDebits))}</td>
+                <td className="p-2 text-right text-green-600">{month.totalCredits > 0 ? formatCurrency(month.totalCredits) : '-'}</td>
+                <td className="p-2 text-right font-medium">{formatCurrency(Math.abs(month.net))}</td>
                 <td className="p-2 text-right">{month.transactionCount}</td>
               </tr>
             ))}
