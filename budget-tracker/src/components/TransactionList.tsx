@@ -5,6 +5,35 @@ import { formatCurrency, formatDate } from '../lib/utils';
 
 type SortField = 'date' | 'description' | 'amount' | 'category';
 type SortDirection = 'asc' | 'desc';
+type ColumnKey = 'date' | 'description' | 'amount' | 'category' | 'source';
+
+// Copy text to the clipboard, falling back to a hidden textarea when the
+// async Clipboard API is unavailable (e.g. non-secure contexts).
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // fall through to the legacy approach
+  }
+
+  try {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    return ok;
+  } catch {
+    return false;
+  }
+}
 
 export function TransactionList() {
   const { state, filteredTransactions, actions } = useApp();
@@ -12,6 +41,7 @@ export function TransactionList() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [copiedField, setCopiedField] = useState<ColumnKey | null>(null);
 
   const parentRef = React.useRef<HTMLDivElement>(null);
 
@@ -76,6 +106,32 @@ export function TransactionList() {
     } else {
       setSortField(field);
       setSortDirection('asc');
+    }
+  };
+
+  // Copy a single column (all filtered/sorted rows, not just the visible page)
+  // as newline-separated values, ready to paste into a spreadsheet column.
+  const handleCopyColumn = async (key: ColumnKey) => {
+    const values = filteredAndSortedTransactions.map(t => {
+      switch (key) {
+        case 'date':
+          return formatDate(t.date);
+        case 'description':
+          return t.description;
+        case 'amount':
+          // Signed numeric value (debits negative) so it sums correctly.
+          return t.amount.toFixed(2);
+        case 'category':
+          return state.categories.find(c => c.id === t.categoryId)?.name || 'Uncategorized';
+        case 'source':
+          return t.sourceFile || '';
+      }
+    });
+
+    const ok = await copyToClipboard(values.join('\n'));
+    if (ok) {
+      setCopiedField(key);
+      setTimeout(() => setCopiedField(prev => (prev === key ? null : prev)), 1500);
     }
   };
 
@@ -146,11 +202,14 @@ export function TransactionList() {
       <div className="border rounded overflow-hidden">
         {/* Header - Fixed outside of scroll container */}
         <div className="bg-gray-100 border-b flex text-sm font-semibold">
-          <SortableHeader label="Date" field="date" currentField={sortField} direction={sortDirection} onSort={handleSort} width="120px" />
-          <SortableHeader label="Description" field="description" currentField={sortField} direction={sortDirection} onSort={handleSort} width="250px" />
-          <SortableHeader label="Amount" field="amount" currentField={sortField} direction={sortDirection} onSort={handleSort} width="120px" />
-          <SortableHeader label="Category" field="category" currentField={sortField} direction={sortDirection} onSort={handleSort} width="150px" />
-          <div className="p-2 border-r" style={{ width: '200px' }}>Source</div>
+          <SortableHeader label="Date" field="date" currentField={sortField} direction={sortDirection} onSort={handleSort} width="120px" onCopy={() => handleCopyColumn('date')} copied={copiedField === 'date'} />
+          <SortableHeader label="Description" field="description" currentField={sortField} direction={sortDirection} onSort={handleSort} width="250px" onCopy={() => handleCopyColumn('description')} copied={copiedField === 'description'} />
+          <SortableHeader label="Amount" field="amount" currentField={sortField} direction={sortDirection} onSort={handleSort} width="120px" onCopy={() => handleCopyColumn('amount')} copied={copiedField === 'amount'} />
+          <SortableHeader label="Category" field="category" currentField={sortField} direction={sortDirection} onSort={handleSort} width="150px" onCopy={() => handleCopyColumn('category')} copied={copiedField === 'category'} />
+          <div className="p-2 border-r flex items-center justify-between" style={{ width: '200px' }}>
+            <span>Source</span>
+            <CopyColumnButton label="Source" count={filteredAndSortedTransactions.length} copied={copiedField === 'source'} onCopy={() => handleCopyColumn('source')} />
+          </div>
           <div className="p-2 border-r w-24 text-center">Exclude</div>
         </div>
 
@@ -231,7 +290,9 @@ function SortableHeader({
   currentField,
   direction,
   onSort,
-  width
+  width,
+  onCopy,
+  copied
 }: {
   label: string;
   field: SortField;
@@ -239,6 +300,8 @@ function SortableHeader({
   direction: SortDirection;
   onSort: (field: SortField) => void;
   width: string;
+  onCopy: () => void;
+  copied: boolean;
 }) {
   const isActive = currentField === field;
 
@@ -249,9 +312,42 @@ function SortableHeader({
       onClick={() => onSort(field)}
     >
       <span>{label}</span>
-      {isActive && (
-        <span className="ml-1">{direction === 'asc' ? '↑' : '↓'}</span>
-      )}
+      <div className="flex items-center">
+        {isActive && (
+          <span className="ml-1">{direction === 'asc' ? '↑' : '↓'}</span>
+        )}
+        <CopyColumnButton label={label} copied={copied} onCopy={onCopy} />
+      </div>
     </div>
+  );
+}
+
+// Small button that copies an entire column's values to the clipboard.
+// Lives inside a clickable header, so it stops click propagation to avoid
+// also triggering a sort.
+function CopyColumnButton({
+  label,
+  copied,
+  onCopy,
+  count
+}: {
+  label: string;
+  copied: boolean;
+  onCopy: () => void;
+  count?: number;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onCopy();
+      }}
+      title={`Copy ${label} column${count !== undefined ? ` (${count} rows)` : ''}`}
+      aria-label={`Copy ${label} column`}
+      className={`ml-1 px-1 text-xs font-normal ${copied ? 'text-green-600' : 'text-gray-400 hover:text-blue-600'}`}
+    >
+      {copied ? '✓' : '⧉'}
+    </button>
   );
 }
