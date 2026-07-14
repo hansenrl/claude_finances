@@ -34,7 +34,9 @@ export class AnalyticsCalculator {
       const expenses = nonExcluded.filter(t => t.type === 'DEBIT');
       const credits = nonExcluded.filter(t => t.type === 'CREDIT');
 
-      const totalDebits = this.sumAmounts(expenses);
+      // Debit amounts are stored negative; use the absolute value so
+      // totalDebits represents gross spending (matching computeOverallStats).
+      const totalDebits = Math.abs(this.sumAmounts(expenses));
       const totalCredits = Math.abs(this.sumAmounts(credits));
 
       return {
